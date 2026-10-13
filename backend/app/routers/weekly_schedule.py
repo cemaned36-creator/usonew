@@ -18,10 +18,65 @@ from app.models.subject import Subject
 from app.models.teacher import Teacher
 from app.models.student_group import StudentGroup
 
+from datetime import time, datetime
+
 router = APIRouter(
     prefix="/weekly-schedule",
     tags=["Weekly Schedule"],
 )
+
+
+def parse_time_value(value):
+    """Преобразует время из Excel в datetime.time."""
+    if isinstance(value, time):
+        return value
+
+    if isinstance(value, datetime):
+        return value.time()
+
+    if isinstance(value, str):
+        value = value.strip()
+
+        for fmt in ("%H:%M", "%H:%M:%S"):
+            try:
+                return datetime.strptime(value, fmt).time()
+            except ValueError:
+                continue
+
+    return None
+
+
+def parse_weekday(value):
+    """Возвращает номер дня недели: 0 — понедельник, 6 — воскресенье."""
+    if isinstance(value, bool) or value is None:
+        return None
+
+    if isinstance(value, int) and 0 <= value <= 6:
+        return value
+
+    weekdays = {
+        "понедельник": 0,
+        "вторник": 1,
+        "среда": 2,
+        "четверг": 3,
+        "пятница": 4,
+        "суббота": 5,
+        "воскресенье": 6,
+    }
+
+    text = str(value).strip().casefold()
+
+    if text in weekdays:
+        return weekdays[text]
+
+    try:
+        number = int(text)
+        if 0 <= number <= 6:
+            return number
+    except ValueError:
+        pass
+
+    return None
 
 
 @router.post("/import/preview")
@@ -142,9 +197,13 @@ async def preview_schedule_import(
         subject_name = get_cell(row, "subject")
         teacher_name = get_cell(row, "teacher")
         room_name = get_cell(row, "room")
-        start_time = get_cell(row, "start_time")
-        end_time = get_cell(row, "end_time")
-        weekday = get_cell(row, "weekday")
+        start_time_raw = get_cell(row, "start_time")
+        end_time_raw = get_cell(row, "end_time")
+        weekday_raw = get_cell(row, "weekday")
+
+        start_time = parse_time_value(start_time_raw)
+        end_time = parse_time_value(end_time_raw)
+        weekday = parse_weekday(weekday_raw)
 
         issues = []
 
@@ -169,13 +228,20 @@ async def preview_schedule_import(
         room = find_item(room_name, rooms, "Аудитория")
 
         if start_time is None:
-            issues.append("Не указано время начала")
+            issues.append("Время начала отсутствует или имеет неверный формат")
 
         if end_time is None:
-            issues.append("Не указано время окончания")
+            issues.append("Время окончания отсутствует или имеет неверный формат")
+
+        if start_time is not None and end_time is not None:
+            if start_time >= end_time:
+                issues.append("Время окончания должно быть позже начала")
 
         if weekday is None:
-            issues.append("Не указан день недели")
+            issues.append(
+                "День недели должен быть числом от 0 до 6 "
+                "или названием дня недели на русском языке"
+            )
 
         # Ищем занятие, соответствующее группе,
         # предмету и преподавателю
@@ -302,9 +368,9 @@ def get_weekly_schedule(db: Session = Depends(get_db)):
         result.append({
             "id": entry.id,
             "lesson_id": entry.lesson_id,
-            "weekday": entry.weekday,
-            "start_time": entry.start_time.strftime("%H:%M"),
-            "end_time": entry.end_time.strftime("%H:%M"),
+            "weekday": weekday,
+            "start_time": start_time.strftime("%H:%M") if start_time else None,
+            "end_time": end_time.strftime("%H:%M") if end_time else None,
             "room_id": entry.room_id,
             "room_name": room.name if room else None,
             "teacher_id": lesson.teacher_id if lesson else None,
