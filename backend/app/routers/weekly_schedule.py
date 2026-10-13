@@ -9,10 +9,223 @@ from app.models.weekly_schedule_entry import WeeklyScheduleEntry
 from app.schemas.weekly_schedule import WeeklyScheduleCreate
 from app.services.access import calculate_transition_time
 
+from io import BytesIO
+
+from fastapi import UploadFile, File
+from openpyxl import load_workbook
+
+from app.models.subject import Subject
+from app.models.teacher import Teacher
+from app.models.student_group import StudentGroup
+
 router = APIRouter(
     prefix="/weekly-schedule",
     tags=["Weekly Schedule"],
 )
+
+
+@router.post("/import/preview")
+async def preview_schedule_import(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    # 1. Проверяем расширение файла
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        raise HTTPException(
+            status_code=400,
+            detail="Загрузите файл Excel с расширением .xlsx",
+        )
+
+    # 2. Читаем Excel
+    content = await file.read()
+
+    try:
+        workbook = load_workbook(
+            BytesIO(content),
+            read_only=True,
+            data_only=True,
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Не удалось прочитать Excel-файл",
+        )
+
+    # 3. Проверяем нужный лист
+    sheet_name = "Данные для импорта"
+
+    if sheet_name not in workbook.sheetnames:
+        workbook.close()
+        raise HTTPException(
+            status_code=400,
+            detail=f"В файле отсутствует лист «{sheet_name}»",
+        )
+
+    sheet = workbook[sheet_name]
+    rows = sheet.iter_rows(values_only=True)
+
+    headers = next(rows, None)
+
+    if not headers:
+        workbook.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Лист Excel пуст",
+        )
+
+    # Приводим названия столбцов к единому виду
+    headers = [
+        str(value).strip().lower() if value is not None else ""
+        for value in headers
+    ]
+
+    required = {
+        "weekday",
+        "group",
+        "start_time",
+        "end_time",
+        "subject",
+        "teacher",
+        "room",
+    }
+
+    missing = required - set(headers)
+
+    if missing:
+        workbook.close()
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "В Excel отсутствуют обязательные столбцы",
+                "missing_columns": sorted(missing),
+            },
+        )
+
+    columns = {name: headers.index(name) for name in required}
+
+    def get_cell(row, column_name):
+        index = columns[column_name]
+        return row[index] if index < len(row) else None
+
+    # 4. Загружаем справочники из базы
+    groups = {
+        str(item.name).strip().casefold(): item
+        for item in db.query(StudentGroup).all()
+    }
+
+    subjects = {
+        str(item.name).strip().casefold(): item
+        for item in db.query(Subject).all()
+    }
+
+    teachers = {
+        str(item.name).strip().casefold(): item
+        for item in db.query(Teacher).all()
+    }
+
+    rooms = {
+        str(item.name).strip().casefold(): item
+        for item in db.query(Room).all()
+    }
+
+    result = []
+    row_number = 1  # строка заголовков
+
+    # 5. Проверяем строки Excel
+    for row in rows:
+        row_number += 1
+
+        if not row or all(value is None for value in row):
+            continue
+
+        group_name = get_cell(row, "group")
+        subject_name = get_cell(row, "subject")
+        teacher_name = get_cell(row, "teacher")
+        room_name = get_cell(row, "room")
+        start_time = get_cell(row, "start_time")
+        end_time = get_cell(row, "end_time")
+        weekday = get_cell(row, "weekday")
+
+        issues = []
+
+        def find_item(value, directory, label):
+            if value is None or not str(value).strip():
+                issues.append(f"Не указано: {label}")
+                return None
+
+            key = str(value).strip().casefold()
+            item = directory.get(key)
+
+            if item is None:
+                issues.append(
+                    f"{label} «{str(value).strip()}» не найден в базе"
+                )
+
+            return item
+
+        group = find_item(group_name, groups, "Группа")
+        subject = find_item(subject_name, subjects, "Предмет")
+        teacher = find_item(teacher_name, teachers, "Преподаватель")
+        room = find_item(room_name, rooms, "Аудитория")
+
+        if start_time is None:
+            issues.append("Не указано время начала")
+
+        if end_time is None:
+            issues.append("Не указано время окончания")
+
+        if weekday is None:
+            issues.append("Не указан день недели")
+
+        # Ищем занятие, соответствующее группе,
+        # предмету и преподавателю
+        lesson = None
+
+        if group and subject and teacher:
+            lesson = (
+                db.query(Lesson)
+                .filter(
+                    Lesson.group_id == group.id,
+                    Lesson.subject_id == subject.id,
+                    Lesson.teacher_id == teacher.id,
+                )
+                .first()
+            )
+
+            if lesson is None:
+                issues.append(
+                    "В базе нет занятия для этой группы, "
+                    "предмета и преподавателя"
+                )
+
+        result.append({
+            "excel_row": row_number,
+            "weekday": str(weekday) if weekday is not None else None,
+            "group": str(group_name) if group_name is not None else None,
+            "subject": str(subject_name) if subject_name is not None else None,
+            "teacher": str(teacher_name) if teacher_name is not None else None,
+            "room": str(room_name) if room_name is not None else None,
+            "start_time": str(start_time) if start_time is not None else None,
+            "end_time": str(end_time) if end_time is not None else None,
+            "lesson_id": lesson.id if lesson else None,
+            "room_id": room.id if room else None,
+            "status": "ready" if not issues else "needs_mapping",
+            "issues": issues,
+        })
+
+    workbook.close()
+
+    ready_count = sum(
+        1 for item in result if item["status"] == "ready"
+    )
+
+    return {
+        "total_rows": len(result),
+        "ready_rows": ready_count,
+        "needs_mapping": len(result) - ready_count,
+        "can_import": len(result) > 0 and ready_count == len(result),
+        "rows": result,
+    }
 
 
 def overlaps(start1, end1, start2, end2):
