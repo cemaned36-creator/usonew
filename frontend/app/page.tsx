@@ -65,6 +65,7 @@ type DashboardData = {
 /* =========================
    MAIN PAGE
 ========================= */
+const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 export default function Home() {
   const [dashboard, setDashboard] =
@@ -81,9 +82,7 @@ export default function Home() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const response = await fetch(
-          "http://127.0.0.1:8000/dashboard"
-        );
+        const response = await fetch(`${API}/dashboard`);
 
         if (!response.ok) {
           throw new Error(
@@ -147,9 +146,8 @@ export default function Home() {
           </h2>
 
           <p className="mt-2 text-sm text-slate-400">
-            Проверьте, запущен ли FastAPI на
-            <br />
-            http://127.0.0.1:8000
+            Не удалось получить данные от сервера.
+            Проверьте подключение к API и повторите попытку.
           </p>
 
           <button
