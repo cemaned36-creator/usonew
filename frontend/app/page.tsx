@@ -80,31 +80,32 @@ export default function Home() {
   ========================= */
 
   useEffect(() => {
+        
     async function loadDashboard() {
       try {
+        console.log("API URL:", API);
+
         const response = await fetch(`${API}/dashboard`);
 
+        console.log("HTTP status:", response.status);
+
         if (!response.ok) {
-          throw new Error(
-            `API error: ${response.status}`
-          );
+          throw new Error(`API error: ${response.status}`);
         }
 
-        const data: DashboardData =
-          await response.json();
+        const data: DashboardData = await response.json();
+
+        console.log("Dashboard data:", data);
 
         setDashboard(data);
+        console.log("Данные переданы в setDashboard");
       } catch (error) {
-        console.error(
-          "Ошибка загрузки Dashboard:",
-          error
-        );
+        console.error("Ошибка загрузки Dashboard:", error);
 
-        setError(
-          "Не удалось подключиться к API"
-        );
+        setError("Не удалось подключиться к API");
       } finally {
         setLoading(false);
+        console.log("Загрузка завершена");
       }
     }
 
@@ -147,7 +148,7 @@ export default function Home() {
 
           <p className="mt-2 text-sm text-slate-400">
             Не удалось получить данные от сервера.
-            Проверьте подключение к API и повторите попытку.
+          Проверьте подключение к API и повторите попытку.
           </p>
 
           <button
