@@ -257,7 +257,19 @@ async def preview_schedule_import(
                 )
                 .first()
             )
-            
+
+            print(
+                "IMPORT CHECK:",
+                {
+                    "group": group.name,
+                    "group_id": group.id,
+                    "subject": subject.name,
+                    "subject_id": subject.id,
+                    "teacher": teacher.name,
+                    "teacher_id": teacher.id,
+                    "lesson_id": lesson.id if lesson else None,
+                },
+            )
         if group and subject and teacher:
             debug_matches = (
                 db.query(Lesson)
