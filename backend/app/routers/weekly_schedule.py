@@ -257,7 +257,35 @@ async def preview_schedule_import(
                 )
                 .first()
             )
+            
+        if group and subject and teacher:
+            debug_matches = (
+                db.query(Lesson)
+                .filter(
+                    Lesson.group_id == group.id,
+                    Lesson.subject_id == subject.id,
+                    Lesson.teacher_id == teacher.id,
+                )
+                .all()
+            )
 
+            print(
+                "IMPORT DEBUG:",
+                {
+                    "group_id": group.id,
+                    "subject_id": subject.id,
+                    "teacher_id": teacher.id,
+                    "matches": [
+                        {
+                            "id": item.id,
+                            "group_id": item.group_id,
+                            "subject_id": item.subject_id,
+                            "teacher_id": item.teacher_id,
+                        }
+                        for item in debug_matches
+                    ],
+                },
+            )
             if lesson is None:
                 issues.append(
                     "В базе нет занятия для этой группы, "
