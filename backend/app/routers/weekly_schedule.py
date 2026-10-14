@@ -401,9 +401,14 @@ def get_weekly_schedule(db: Session = Depends(get_db)):
 
     result = []
 
+    
     for entry in entries:
         lesson = db.get(Lesson, entry.lesson_id)
         room = db.get(Room, entry.room_id)
+
+        weekday = entry.weekday
+        start_time = entry.start_time
+        end_time = entry.end_time
 
         result.append({
             "id": entry.id,
@@ -417,6 +422,7 @@ def get_weekly_schedule(db: Session = Depends(get_db)):
             "subject_id": lesson.subject_id if lesson else None,
             "group_id": lesson.group_id if lesson else None,
         })
+
 
     return result
 
