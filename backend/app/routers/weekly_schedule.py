@@ -334,6 +334,260 @@ async def preview_schedule_import(
     }
 
 
+@router.post("/import")
+async def import_weekly_schedule(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Массовый импорт недельного расписания.
+    Все записи сохраняются одной транзакцией.
+    """
+    try:
+        # 1. Повторно проверяем файл на backend.
+        preview = await preview_schedule_import(file=file, db=db)
+
+        if not preview["can_import"]:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Импорт невозможен: исправьте ошибки в Excel.",
+                    "preview": preview,
+                },
+            )
+
+        rows = preview["rows"]
+
+        # 2. Проверяем повторяющиеся занятия внутри Excel.
+        lesson_ids = [row["lesson_id"] for row in rows]
+
+        if len(lesson_ids) != len(set(lesson_ids)):
+            raise HTTPException(
+                status_code=409,
+                detail="В Excel одно и то же занятие указано несколько раз.",
+            )
+
+        # 3. Загружаем существующее расписание.
+        existing_entries = db.query(WeeklyScheduleEntry).all()
+
+        existing_lesson_ids = {
+            entry.lesson_id for entry in existing_entries
+        }
+
+        duplicate_lessons = (
+            set(lesson_ids) & existing_lesson_ids
+        )
+
+        if duplicate_lessons:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Некоторые занятия уже есть в расписании. "
+                    f"ID занятий: {sorted(duplicate_lessons)}. "
+                    "Удалите существующие записи или исправьте Excel."
+                ),
+            )
+
+        # 4. Подготавливаем записи, пока ничего не сохраняем.
+        planned_entries = []
+
+        for row in rows:
+            start_time = parse_time_value(row["start_time"])
+            end_time = parse_time_value(row["end_time"])
+            weekday = parse_weekday(row["weekday"])
+
+            if (
+                start_time is None
+                or end_time is None
+                or weekday is None
+                or start_time >= end_time
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Некорректные день или время "
+                        f"в строке Excel {row['excel_row']}."
+                    ),
+                )
+
+            lesson = db.get(Lesson, row["lesson_id"])
+            room = db.get(Room, row["room_id"])
+
+            if not lesson or not room:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Не найдено занятие или аудитория "
+                        f"для строки Excel {row['excel_row']}."
+                    ),
+                )
+
+            planned_entries.append(
+                WeeklyScheduleEntry(
+                    lesson_id=lesson.id,
+                    weekday=weekday,
+                    room_id=room.id,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+            )
+
+        # 5. Объединяем существующие и новые записи
+        # для проверки конфликтов по каждому дню.
+        all_entries = existing_entries + planned_entries
+
+        lessons_by_id = {}
+
+        for entry in all_entries:
+            if entry.lesson_id not in lessons_by_id:
+                lessons_by_id[entry.lesson_id] = db.get(
+                    Lesson, entry.lesson_id
+                )
+
+        rooms_by_id = {}
+
+        for entry in all_entries:
+            if entry.room_id not in rooms_by_id:
+                rooms_by_id[entry.room_id] = db.get(
+                    Room, entry.room_id
+                )
+
+        for index, entry in enumerate(planned_entries):
+            lesson = lessons_by_id.get(entry.lesson_id)
+
+            if lesson is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Занятие {entry.lesson_id} не найдено.",
+                )
+
+            # Проверяем пересечения с другими занятиями этого дня.
+            for other in all_entries:
+                if other is entry or other.weekday != entry.weekday:
+                    continue
+
+                other_lesson = lessons_by_id.get(other.lesson_id)
+
+                if not overlaps(
+                    entry.start_time,
+                    entry.end_time,
+                    other.start_time,
+                    other.end_time,
+                ):
+                    continue
+
+                if other.room_id == entry.room_id:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"Строка Excel {rows[index]['excel_row']}: "
+                            "аудитория занята в это время."
+                        ),
+                    )
+
+                if (
+                    other_lesson
+                    and other_lesson.teacher_id == lesson.teacher_id
+                ):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"Строка Excel {rows[index]['excel_row']}: "
+                            "у преподавателя пересекаются занятия."
+                        ),
+                    )
+
+                if (
+                    other_lesson
+                    and other_lesson.group_id == lesson.group_id
+                ):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"Строка Excel {rows[index]['excel_row']}: "
+                            "у группы пересекаются занятия."
+                        ),
+                    )
+
+        # 6. Проверяем переходы между последовательными занятиями
+        # каждого преподавателя с учетом новых записей.
+        teacher_entries = {}
+
+        for entry in all_entries:
+            lesson = lessons_by_id.get(entry.lesson_id)
+
+            if lesson:
+                teacher_entries.setdefault(
+                    (entry.weekday, lesson.teacher_id), []
+                ).append(entry)
+
+        for (day, teacher_id), teacher_day_entries in teacher_entries.items():
+            ordered = sorted(
+                teacher_day_entries,
+                key=lambda item: item.start_time,
+            )
+
+            for previous, current in zip(ordered, ordered[1:]):
+                # Пересечения уже проверены выше.
+                available_minutes = minutes_between(
+                    previous.end_time,
+                    current.start_time,
+                )
+
+                previous_room = rooms_by_id.get(previous.room_id)
+                current_room = rooms_by_id.get(current.room_id)
+
+                if not previous_room or not current_room:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            "Не удалось найти аудиторию "
+                            "для проверки перехода преподавателя."
+                        ),
+                    )
+
+                check_transition(
+                    db=db,
+                    previous_room=previous_room,
+                    target_room=current_room,
+                    available_minutes=available_minutes,
+                )
+
+        # 7. Сохраняем только после всех проверок.
+        db.add_all(planned_entries)
+        db.commit()
+
+        for entry in planned_entries:
+            db.refresh(entry)
+
+        return {
+            "status": "success",
+            "message": "Расписание успешно импортировано.",
+            "imported_count": len(planned_entries),
+            "entries": [
+                {
+                    "id": entry.id,
+                    "lesson_id": entry.lesson_id,
+                    "weekday": entry.weekday,
+                    "room_id": entry.room_id,
+                    "start_time": str(entry.start_time),
+                    "end_time": str(entry.end_time),
+                }
+                for entry in planned_entries
+            ],
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Ошибка при импорте расписания. Изменения отменены.",
+        )
+
+
 def overlaps(start1, end1, start2, end2):
     """Проверяет пересечение двух временных интервалов."""
     return start1 < end2 and start2 < end1
