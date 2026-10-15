@@ -67,6 +67,12 @@ export default function WeeklySchedulePage() {
   const [groups, setGroups] = useState<NamedOption[]>([]);
   const [rooms, setRooms] = useState<NamedOption[]>([]);
 
+  
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any>(null);
+  const [importing, setImporting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+
   const [lessonId, setLessonId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [weekday, setWeekday] = useState("0");
@@ -265,6 +271,122 @@ export default function WeeklySchedulePage() {
     }
   }
 
+  
+  async function readApiResponse(response: Response) {
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const detail = data?.detail;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : detail?.message ??
+            (typeof data?.message === "string" ? data.message : null) ??
+            `Ошибка API: ${response.status}`;
+
+      throw new Error(message);
+    }
+
+    return data;
+  }
+
+  async function previewImport() {
+    if (!importFile) {
+      showMessage("Сначала выбери Excel-файл (.xlsx)", "error");
+      return;
+    }
+
+    setPreviewing(true);
+    setImportPreview(null);
+    setMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+
+      const response = await fetch(
+        `${API}/weekly-schedule/import/preview`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await readApiResponse(response);
+      setImportPreview(data);
+
+      if (data.can_import) {
+        showMessage(
+          `Проверка завершена: готово к импорту ${data.ready_rows} занятий.`,
+          "success"
+        );
+      } else {
+        showMessage(
+          `Проверка завершена. Готово: ${data.ready_rows} из ${data.total_rows}. Исправь ошибки перед импортом.`,
+          "error"
+        );
+      }
+    } catch (error) {
+      showMessage(
+        error instanceof Error ? error.message : "Не удалось проверить файл",
+        "error"
+      );
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
+  async function importSchedule() {
+    if (!importFile || !importPreview?.can_import) {
+      showMessage("Сначала выбери и проверь Excel-файл", "error");
+      return;
+    }
+
+    setImporting(true);
+    setMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+
+      const response = await fetch(
+        "https://usonew.onrender.com/weekly-schedule/import",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await readApiResponse(response);
+
+      await loadSchedule();
+
+      setImportPreview(null);
+      setImportFile(null);
+
+      const fileInput = document.getElementById(
+        "weekly-schedule-import-file"
+      ) as HTMLInputElement | null;
+
+      if (fileInput) {
+        fileInput.value = "";
+      }
+
+      showMessage(
+        `Импорт завершён: сохранено занятий — ${data.imported_count}.`,
+        "success"
+      );
+    } catch (error) {
+      showMessage(
+        error instanceof Error ? error.message : "Ошибка импорта расписания",
+        "error"
+      );
+    } finally {
+      setImporting(false);
+    }
+  }
+
+
   const totalLessons = entries.length;
 
   if (loading) {
@@ -401,6 +523,109 @@ export default function WeeklySchedulePage() {
                 </div>
               </div>
             </section>
+
+            
+        {/* Импорт Excel */}
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <h2 className="text-base font-semibold text-slate-900">
+              Импорт расписания из Excel
+            </h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Загрузи файл с листом «Данные для импорта»
+            </p>
+          </div>
+
+          <div className="space-y-4 p-5 sm:p-6">
+            <label className={labelClass}>
+              Excel-файл (.xlsx)
+              <input
+                id="weekly-schedule-import-file"
+                type="file"
+                accept=".xlsx"
+                className={fieldClass}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  setImportFile(file);
+                  setImportPreview(null);
+                  setMessage("");
+                }}
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={previewImport}
+                disabled={!importFile || previewing || importing}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {previewing ? "Проверка..." : "Проверить файл"}
+              </button>
+
+              <button
+                type="button"
+                onClick={importSchedule}
+                disabled={
+                  !importFile ||
+                  !importPreview?.can_import ||
+                  importing ||
+                  previewing
+                }
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {importing
+                  ? "Импорт..."
+                  : `Импортировать ${importPreview?.ready_rows ?? ""} занятий`}
+              </button>
+            </div>
+
+            {importPreview && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-medium text-slate-800">
+                  Результат проверки
+                </p>
+
+                <div className="mt-2 flex flex-wrap gap-4 text-sm">
+                  <span>
+                    Всего строк: <strong>{importPreview.total_rows}</strong>
+                  </span>
+                  <span className="text-emerald-700">
+                    Готово: <strong>{importPreview.ready_rows}</strong>
+                  </span>
+                  <span className="text-red-700">
+                    Ошибки: <strong>{importPreview.needs_mapping}</strong>
+                  </span>
+                </div>
+
+                {importPreview.rows?.some(
+                  (row: any) => row.issues?.length > 0
+                ) && (
+                  <div className="mt-3 space-y-2">
+                    {importPreview.rows.map((row: any) =>
+                      row.issues?.length ? (
+                        <div
+                          key={row.excel_row}
+                          className="text-sm text-red-700"
+                        >
+                          <strong>Строка {row.excel_row}:</strong>{" "}
+                          {row.issues.join("; ")}
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                )}
+
+                {importPreview.can_import && (
+                  <p className="mt-3 text-sm font-medium text-emerald-700">
+                    Все строки готовы. Можно импортировать расписание.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
 
             {/* Форма добавления */}
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
