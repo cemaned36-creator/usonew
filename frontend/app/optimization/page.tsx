@@ -227,7 +227,7 @@ export default function OptimizationPage() {
     };
   }
 
-  function ScheduleColumn({ optimized }: { optimized: boolean }) {
+  function renderScheduleColumn(optimized: boolean) {
     const items = optimized ? displayEntries : entries;
     return (
       <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -386,8 +386,8 @@ export default function OptimizationPage() {
             ) : (
               <>
                 <div className="grid items-start gap-5 2xl:grid-cols-2">
-                  <ScheduleColumn optimized={false} />
-                  <ScheduleColumn optimized={Boolean(result)} />
+                  {renderScheduleColumn(false)}
+                  {renderScheduleColumn(Boolean(result))}
                 </div>
 
                 {result && (
