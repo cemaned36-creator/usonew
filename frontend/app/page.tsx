@@ -8,14 +8,10 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarDays,
-  CheckCircle2,
   ChevronRight,
-  Clock3,
   DoorOpen,
   GraduationCap,
-  KeyRound,
   LayoutDashboard,
-  MapPin,
   Settings,
   Sparkles,
   Users,
@@ -47,19 +43,6 @@ type DashboardData = {
 
   schedule: ScheduleItem[];
 
-  optimization: {
-    before: {
-      transition_minutes: number;
-      key_operations: number;
-      conflicts: number;
-    };
-
-    after: {
-      transition_minutes: number;
-      key_operations: number;
-      conflicts: number;
-    };
-  };
 };
 
 /* =========================
@@ -543,184 +526,6 @@ export default function Home() {
 
             </section>
 
-            {/* =================================================
-                OPTIMIZATION EFFECT
-            ================================================= */}
-
-            <section className="mt-6">
-
-              <div className="mb-3 flex items-center justify-between">
-
-                <div>
-
-                  <h2 className="text-base font-semibold">
-                    Эффект оптимизации
-                  </h2>
-
-                  <p className="mt-1 text-xs text-slate-400">
-                    Сравнение текущего и оптимизированного расписания
-                  </p>
-
-                </div>
-
-                <Link
-                  href="/optimization"
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-                >
-                  Открыть оптимизацию
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-
-                {/* CURRENT */}
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-
-                  <div className="mb-4 flex items-center justify-between">
-
-                    <div>
-
-                      <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                        Текущее
-                      </div>
-
-                      <div className="mt-1 text-sm font-medium text-slate-700">
-                        До оптимизации
-                      </div>
-
-                    </div>
-
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
-                      <Clock3 className="h-4 w-4 text-slate-500" />
-                    </div>
-
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-
-                    <Metric
-                      value={`${dashboard.optimization.before.transition_minutes} мин`}
-                      label="перемещения"
-                    />
-
-                    <Metric
-                      value={String(
-                        dashboard.optimization.before.key_operations
-                      )}
-                      label="операций с ключами"
-                    />
-
-                    <Metric
-                      value={String(
-                        dashboard.optimization.before.conflicts
-                      )}
-                      label="конфликтов"
-                    />
-
-                  </div>
-
-                </div>
-
-                {/* OPTIMIZED */}
-
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
-
-                  <div className="mb-4 flex items-center justify-between">
-
-                    <div>
-
-                      <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-                        Оптимизированное
-                      </div>
-
-                      <div className="mt-1 text-sm font-medium text-slate-700">
-                        После оптимизации
-                      </div>
-
-                    </div>
-
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    </div>
-
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-
-                    <Metric
-                      value={`${dashboard.optimization.after.transition_minutes} мин`}
-                      label="перемещения"
-                      positive
-                    />
-
-                    <Metric
-                      value={String(
-                        dashboard.optimization.after.key_operations
-                      )}
-                      label="операций с ключами"
-                      positive
-                    />
-
-                    <Metric
-                      value={String(
-                        dashboard.optimization.after.conflicts
-                      )}
-                      label="конфликтов"
-                      positive
-                    />
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </section>
-            {/* =================================================
-                PROBLEMS
-            ================================================= */}
-
-            <section className="mt-6">
-
-              <div className="mb-3">
-
-                <h2 className="text-base font-semibold">
-                  Требуют внимания
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Проблемы, найденные в текущем расписании
-                </p>
-
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-
-                <ProblemCard
-                  icon={AlertTriangle}
-                  title="Конфликт расписания"
-                  description="Проверка конфликтов будет подключена следующим этапом"
-                />
-
-                <ProblemCard
-                  icon={MapPin}
-                  title="Долгое перемещение"
-                  description="Расчёт перемещений будет подключен к Dashboard"
-                />
-
-                <ProblemCard
-                  icon={KeyRound}
-                  title="Необходим ключ"
-                  description="Информация о доступе к аудиториям уже доступна из API"
-                />
-
-              </div>
-
-            </section>
-
           </div>
 
         </main>
@@ -828,78 +633,6 @@ function StatCard({
             }`}
           />
 
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =============================================================
-   METRIC
-============================================================= */
-
-function Metric({
-  value,
-  label,
-  positive = false,
-}: {
-  value: string;
-  label: string;
-  positive?: boolean;
-}) {
-  return (
-    <div>
-
-      <div
-        className={`text-lg font-semibold ${
-          positive
-            ? "text-emerald-600"
-            : "text-slate-800"
-        }`}
-      >
-        {value}
-      </div>
-
-      <div className="mt-1 text-xs text-slate-400">
-        {label}
-      </div>
-
-    </div>
-  );
-}
-
-/* =============================================================
-   PROBLEM CARD
-============================================================= */
-
-function ProblemCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50">
-
-        <Icon className="h-4 w-4 text-amber-600" />
-
-      </div>
-
-      <div className="min-w-0">
-
-        <div className="text-sm font-medium text-slate-800">
-          {title}
-        </div>
-
-        <div className="mt-1 text-xs leading-5 text-slate-400">
-          {description}
         </div>
 
       </div>
