@@ -589,6 +589,7 @@ async def import_weekly_schedule(
                     "id": entry.id,
                     "lesson_id": entry.lesson_id,
                     "weekday": entry.weekday,
+                    "week_type": entry.week_type,
                     "room_id": entry.room_id,
                     "start_time": str(entry.start_time),
                     "end_time": str(entry.end_time),
