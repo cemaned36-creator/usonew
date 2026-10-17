@@ -427,6 +427,9 @@ export default function WeeklySchedulePage() {
   }
 
 
+  const isAdmin = profileLoaded && profileRole === "admin";
+  const isTeacherView = profileLoaded && profileRole === "teacher";
+
   const filteredEntries = entries.filter((entry) => {
     if (selectedTeacherId === "") {
       return true;
@@ -505,7 +508,7 @@ export default function WeeklySchedulePage() {
               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
             </Link>
 
-{profileRole === "admin" && (
+{isAdmin && (
               <Link
                 href="/optimization"
                 className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
@@ -539,7 +542,7 @@ export default function WeeklySchedulePage() {
                 </h1>
               </div>
               <p className="mt-1 text-sm text-slate-400">
-{profileRole === "teacher" ? `Расписание преподавателя: ${profileTeacherName}` : "Управление занятиями и распределением по аудиториям"}
+{isTeacherView ? `Расписание преподавателя: ${profileTeacherName}` : "Управление занятиями и распределением по аудиториям"}
               </p>
             </div>
 
@@ -553,7 +556,7 @@ export default function WeeklySchedulePage() {
           </header>
 
           <div className="space-y-6 px-5 py-6 sm:px-8">
-            {profileRole === "admin" && (
+            {isAdmin && (
               <>
 {/* Краткая статистика */}
             <section className="grid gap-4 sm:grid-cols-2">
@@ -600,7 +603,7 @@ export default function WeeklySchedulePage() {
                       </>
             )}
 
-            {profileRole === "admin" && (
+            {isAdmin && (
               <>
 {/* Импорт Excel */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -707,7 +710,7 @@ export default function WeeklySchedulePage() {
                           </>
             )}
 
-            {profileRole === "admin" && (
+            {isAdmin && (
               <>
 {/* Форма добавления */}
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -835,7 +838,7 @@ export default function WeeklySchedulePage() {
             )}
 
             {/* Сообщения API */}
-            {profileRole === "admin" && message && (
+            {isAdmin && message && (
               <div
                 role="status"
                 aria-live="polite"
@@ -859,7 +862,7 @@ export default function WeeklySchedulePage() {
             {/* Расписание по дням */}
             <section>
               <div className="mb-4">
-                {profileRole === "admin" && <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
+                {isAdmin && <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
                   <label
                     htmlFor="teacher-filter"
                     className={labelClass}
@@ -1061,7 +1064,7 @@ export default function WeeklySchedulePage() {
                                   </div>
                                 </div>
 
-                                {profileRole === "admin" && <button
+                                {isAdmin && <button
                                   type="button"
                                   onClick={() => removeEntry(entry.id)}
                                   disabled={deletingId === entry.id}
