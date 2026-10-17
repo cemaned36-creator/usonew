@@ -89,6 +89,18 @@ export default function OptimizationPage() {
   const [saving, setSaving] = useState(false);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
   const [message, setMessage] = useState<Message | null>(null);
+  const [teacherAccess, setTeacherAccess] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedProfile = localStorage.getItem("uso-user-profile");
+      if (savedProfile && JSON.parse(savedProfile)?.role === "teacher") {
+        setTeacherAccess(true);
+      }
+    } catch {
+      // Ignore malformed local profile; dashboard will request a new selection.
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!API) throw new Error("Не задан NEXT_PUBLIC_API_URL для frontend.");
@@ -301,6 +313,21 @@ export default function OptimizationPage() {
               </section>
             );
           })}
+        </div>
+      </div>
+    );
+  }
+
+  if (teacherAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f8fa] p-6">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+            <CalendarDays className="h-6 w-6 text-slate-600" />
+          </div>
+          <h1 className="mt-4 text-lg font-semibold text-slate-900">Раздел доступен только администратору</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">В режиме преподавателя доступен только просмотр недельного расписания.</p>
+          <Link href="/weekly-schedule" className="mt-5 inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">Открыть расписание</Link>
         </div>
       </div>
     );
