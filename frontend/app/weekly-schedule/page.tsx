@@ -39,6 +39,7 @@ type Entry = {
   end_time: string;
   room_id: number;
   room_name: string | null;
+  week_type: "odd" | "even" | "both";
 };
 
 type NamedOption = {
@@ -96,6 +97,8 @@ export default function WeeklySchedulePage() {
   const [lessonId, setLessonId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [weekday, setWeekday] = useState("0");
+  const [selectedWeekType, setSelectedWeekType] = useState<"odd" | "even" | "both">("both");
+  const [entryWeekType, setEntryWeekType] = useState<"odd" | "even" | "both">("both");
   const [start, setStart] = useState("08:30");
   const [end, setEnd] = useState("10:00");
 
@@ -136,8 +139,8 @@ export default function WeeklySchedulePage() {
     ].join(" — ");
   }
 
-  async function loadSchedule() {
-    const response = await fetch(`${API}/weekly-schedule/`);
+  async function loadSchedule(weekType: "odd" | "even" | "both" = selectedWeekType) {
+    const response = await fetch(`${API}/weekly-schedule/?week_type=${weekType}`);
 
     if (!response.ok) {
       throw new Error("Не удалось загрузить расписание");
@@ -171,7 +174,7 @@ export default function WeeklySchedulePage() {
     async function loadData() {
       try {
         const endpoints = [
-          "/weekly-schedule/",
+          "/weekly-schedule/?week_type=both",
           "/lessons/",
           "/rooms/",
           "/teachers/",
@@ -254,6 +257,7 @@ export default function WeeklySchedulePage() {
           weekday: Number(weekday),
           start_time: start,
           end_time: end,
+          week_type: entryWeekType,
         }),
       });
 
@@ -763,6 +767,19 @@ export default function WeeklySchedulePage() {
                 </label>
 
                 <label className={labelClass}>
+                  Неделя
+                  <select
+                    className={fieldClass}
+                    value={entryWeekType}
+                    onChange={(event) => setEntryWeekType(event.target.value as "odd" | "even" | "both")}
+                  >
+                    <option value="both">Обе недели</option>
+                    <option value="odd">Только нечётная</option>
+                    <option value="even">Только чётная</option>
+                  </select>
+                </label>
+
+                <label className={labelClass}>
                   День недели
                   <select
                     className={fieldClass}
@@ -848,6 +865,35 @@ export default function WeeklySchedulePage() {
             {/* Расписание по дням */}
             <section>
               <div className="mb-4">
+                <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
+                  <label htmlFor="week-type-filter" className={labelClass}>
+                    Отображаемое расписание
+                  </label>
+                  <select
+                    id="week-type-filter"
+                    value={selectedWeekType}
+                    onChange={async (event) => {
+                      const nextWeekType = event.target.value as "odd" | "even" | "both";
+                      setSelectedWeekType(nextWeekType);
+                      setLoading(true);
+                      try {
+                        await loadSchedule(nextWeekType);
+                      } catch (error) {
+                        showMessage(error instanceof Error ? error.message : "Не удалось загрузить расписание", "error");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className={fieldClass}
+                  >
+                    <option value="both">Все недели</option>
+                    <option value="odd">Нечётная неделя</option>
+                    <option value="even">Чётная неделя</option>
+                  </select>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Общие занятия отображаются в обоих вариантах.
+                  </p>
+                </div>
                 {isAdmin && <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
                   <label
                     htmlFor="teacher-filter"
