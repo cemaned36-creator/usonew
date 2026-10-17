@@ -382,13 +382,21 @@ def preview_optimization(db: Session):
         entries, lessons, rooms, db
     )
 
+    
+    time_saved = (
+        max(0, before_total - after_total)
+        if before_total is not None and after_total is not None
+        else None
+    )
+
     return {
         "changes": changes,
         "changes_count": len(changes),
         "transition_time_before": before_total,
         "transition_time_after": after_total,
-        "time_saved": max(0, before_total - after_total),
+        "time_saved": time_saved,
         "unknown_routes": unknown_routes,
         "saved_to_database": False,
     }
+
 
