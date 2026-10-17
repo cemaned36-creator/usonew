@@ -204,11 +204,11 @@ export default function Home() {
 
             <div>
               <div className="text-[15px] font-semibold tracking-tight">
-                University
+                УрГУПС
               </div>
 
               <div className="text-[12px] text-slate-400">
-                Schedule Optimizer
+                Оптимизатор расписания by AlyaIT
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function Home() {
 
               <SidebarItem
                 icon={LayoutDashboard}
-                label="Dashboard"
+                label="Главная страница"
                 href="/"
                 active
               />
@@ -315,7 +315,7 @@ export default function Home() {
             <div>
 
               <h1 className="text-xl font-semibold tracking-tight">
-                Dashboard
+                Главная страница
               </h1>
 
               <p className="mt-0.5 text-sm text-slate-400">
