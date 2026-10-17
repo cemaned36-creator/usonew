@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import Link from "next/link";
+import BrandLogo from "@/components/BrandLogo";
 
 import {
   AlertTriangle,
@@ -197,21 +198,7 @@ export default function Home() {
 
           {/* Logo */}
 
-          <div className="flex h-[76px] items-center gap-3 border-b border-slate-200 px-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900">
-              <CalendarDays className="h-5 w-5 text-white" />
-            </div>
-
-            <div>
-              <div className="text-[15px] font-semibold tracking-tight">
-                УрГУПС
-              </div>
-
-              <div className="text-[12px] text-slate-400">
-                Оптимизатор расписания ㅤby AlyaIT
-              </div>
-            </div>
-          </div>
+          <BrandLogo />
 
           {/* Navigation */}
 
