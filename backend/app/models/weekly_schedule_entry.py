@@ -1,6 +1,6 @@
 from sqlalchemy import (
-    Column, Integer, Time, ForeignKey,
-    UniqueConstraint, CheckConstraint
+    Column, Integer, Time, String, ForeignKey,
+    UniqueConstraint, CheckConstraint,
 )
 from app.database import Base
 
@@ -14,10 +14,13 @@ class WeeklyScheduleEntry(Base):
         Integer,
         ForeignKey("lessons.id"),
         nullable=False,
-        unique=True,
     )
 
     weekday = Column(Integer, nullable=False)
+
+    # odd — нечётная неделя, even — чётная, both — обе недели.
+    # Старые записи миграция сохраняет как both.
+    week_type = Column(String(8), nullable=False, default="both", server_default="both")
 
     room_id = Column(
         Integer,
@@ -29,6 +32,10 @@ class WeeklyScheduleEntry(Base):
     end_time = Column(Time, nullable=False)
 
     __table_args__ = (
+        UniqueConstraint(
+            "lesson_id", "weekday", "week_type",
+            name="uq_weekly_schedule_lesson_day_week",
+        ),
         CheckConstraint(
             "weekday >= 0 AND weekday <= 6",
             name="check_weekday_range",
@@ -36,5 +43,9 @@ class WeeklyScheduleEntry(Base):
         CheckConstraint(
             "start_time < end_time",
             name="check_lesson_time",
+        ),
+        CheckConstraint(
+            "week_type IN ('odd', 'even', 'both')",
+            name="check_week_type",
         ),
     )
