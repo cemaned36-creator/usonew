@@ -11,7 +11,7 @@ import {
   ChevronRight,
   DoorOpen,
   GraduationCap,
-  LayoutГлавная страница,
+  LayoutDashboard,
   Settings,
   Sparkles,
   Users,
@@ -204,7 +204,7 @@ export default function Home() {
 
             <div>
               <div className="text-[15px] font-semibold tracking-tight">
-                УрГУПС
+                University
               </div>
 
               <div className="text-[12px] text-slate-400">
