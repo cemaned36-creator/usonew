@@ -208,7 +208,7 @@ export default function Home() {
               </div>
 
               <div className="text-[12px] text-slate-400">
-                Оптимизатор расписания ㅤㅤㅤby AlyaIT
+                Оптимизатор расписания ㅤㅤby AlyaIT
               </div>
             </div>
           </div>
