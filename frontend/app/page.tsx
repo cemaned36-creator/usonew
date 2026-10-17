@@ -203,27 +203,32 @@ export default function Home() {
               <SidebarItem
                 icon={LayoutDashboard}
                 label="Dashboard"
+                href="/"
                 active
               />
 
               <SidebarItem
                 icon={CalendarDays}
                 label="Расписание"
+                href="/weekly-schedule"
               />
 
               <SidebarItem
                 icon={GraduationCap}
                 label="Преподаватели"
+                href="#"
               />
 
               <SidebarItem
                 icon={DoorOpen}
                 label="Аудитории"
+                href="#"
               />
 
               <SidebarItem
                 icon={Sparkles}
                 label="Оптимизация"
+                href="/optimization"
               />
 
             </div>
@@ -557,7 +562,13 @@ export default function Home() {
 
                 </div>
 
-                <Sparkles className="h-5 w-5 text-slate-400" />
+                <Link
+                  href="/optimization"
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                >
+                  Открыть оптимизацию
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
 
               </div>
 
@@ -725,14 +736,18 @@ export default function Home() {
 function SidebarItem({
   icon: Icon,
   label,
+  href,
   active = false,
 }: {
   icon: React.ElementType;
   label: string;
+  href: string;
   active?: boolean;
 }) {
   return (
-    <button
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
         active
           ? "bg-slate-900 text-white"
@@ -741,18 +756,14 @@ function SidebarItem({
     >
       <Icon
         className={`h-[18px] w-[18px] ${
-          active
-            ? "text-white"
-            : "text-slate-400"
+          active ? "text-white" : "text-slate-400"
         }`}
       />
-
       <span>{label}</span>
-
       {active && (
         <div className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
       )}
-    </button>
+    </Link>
   );
 }
 
