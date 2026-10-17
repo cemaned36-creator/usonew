@@ -342,14 +342,14 @@ export default function OptimizationPage() {
               <CalendarDays className="h-5 w-5 text-white" />
             </div>
             <div>
-              <div className="text-[15px] font-semibold tracking-tight">University</div>
-              <div className="text-xs text-slate-400">Schedule Optimizer</div>
+              <div className="text-[15px] font-semibold tracking-tight">УрГУПС</div>
+              <div className="text-xs text-slate-400">Оптимизатор расписания by AlyaIT</div>
             </div>
           </Link>
           <nav className="flex-1 px-3 py-5">
             <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Основное</p>
             <Link href="/" className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
-              <GraduationCap className="h-[18px] w-[18px] text-slate-400" />Dashboard
+              <GraduationCap className="h-[18px] w-[18px] text-slate-400" />Главная страница
             </Link>
             <Link href="/weekly-schedule" className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
               <CalendarDays className="h-[18px] w-[18px] text-slate-400" />Расписание
@@ -361,7 +361,7 @@ export default function OptimizationPage() {
           </nav>
           <div className="border-t border-slate-200 p-4">
             <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-sm font-medium text-slate-800">University Schedule</div>
+              <div className="text-sm font-medium text-slate-800">Расписание УрГУПС</div>
               <div className="mt-1 text-xs text-slate-400">Управление расписанием</div>
             </div>
           </div>
