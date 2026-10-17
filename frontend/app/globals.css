@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #241653;
+  --brand-purple: #2d176b;
+  --brand-purple-dark: #21104f;
+  --brand-green: #008a43;
+  --brand-green-dark: #006b34;
+  --brand-lilac: #f3f0fa;
+  --brand-mint: #eaf7ef;
+  --brand-border: #e5e0ef;
+  --brand-muted: #746d89;
 }
 
 @theme inline {
@@ -12,15 +21,109 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* УрГУПС brand palette: purple + green + clean white */
+[class~="bg-slate-900"],
+[class~="bg-slate-950"] {
+  background-color: var(--brand-purple) !important;
+}
+[class~="hover:bg-slate-800"]:hover {
+  background-color: var(--brand-purple-dark) !important;
+}
+[class~="text-slate-900"],
+[class~="text-slate-800"] {
+  color: var(--brand-purple) !important;
+}
+[class~="text-slate-700"] {
+  color: #40345f !important;
+}
+[class~="text-slate-600"] {
+  color: #5c5277 !important;
+}
+[class~="text-slate-500"] {
+  color: #6d6385 !important;
+}
+[class~="text-slate-400"],
+[class~="text-slate-300"] {
+  color: var(--brand-muted) !important;
+}
+[class~="border-slate-900"] {
+  border-color: var(--brand-purple) !important;
+}
+[class~="border-slate-400"],
+[class~="border-slate-300"],
+[class~="border-slate-200"],
+[class~="border-slate-100"] {
+  border-color: var(--brand-border) !important;
+}
+[class~="bg-slate-50"],
+[class~="bg-slate-100"] {
+  background-color: var(--brand-lilac) !important;
+}
+[class~="bg-slate-200"],
+[class~="bg-slate-300"] {
+  background-color: #e6e0f2 !important;
+}
+[class~="hover:bg-slate-50"]:hover,
+[class~="hover:bg-slate-100"]:hover {
+  background-color: #ebe5f7 !important;
+}
+[class~="hover:text-slate-900"]:hover,
+[class~="hover:text-slate-700"]:hover {
+  color: var(--brand-purple) !important;
+}
+[class~="ring-slate-900"] {
+  --tw-ring-color: var(--brand-purple) !important;
+}
+
+/* Primary blue actions are recolored to the university purple */
+[class~="bg-blue-600"],
+[class~="bg-blue-700"] {
+  background-color: var(--brand-purple) !important;
+}
+[class~="hover:bg-blue-700"]:hover,
+[class~="hover:bg-blue-800"]:hover {
+  background-color: var(--brand-purple-dark) !important;
+}
+[class~="text-blue-600"],
+[class~="text-blue-700"] {
+  color: var(--brand-purple) !important;
+}
+[class~="hover:text-blue-800"]:hover {
+  color: var(--brand-purple-dark) !important;
+}
+[class~="border-blue-200"],
+[class~="border-blue-300"] {
+  border-color: #d9cfee !important;
+}
+[class~="bg-blue-50"],
+[class~="bg-blue-100"] {
+  background-color: var(--brand-lilac) !important;
+}
+
+/* Green actions match the green sweep in the official logo */
+[class~="bg-emerald-700"] {
+  background-color: var(--brand-green) !important;
+}
+[class~="hover:bg-emerald-800"]:hover {
+  background-color: var(--brand-green-dark) !important;
+}
+[class~="text-emerald-700"],
+[class~="text-emerald-800"] {
+  color: var(--brand-green-dark) !important;
+}
+[class~="bg-emerald-50"],
+[class~="bg-emerald-100"] {
+  background-color: var(--brand-mint) !important;
+}
+[class~="border-emerald-200"] {
+  border-color: #b8e3c8 !important;
+}
+[class~="ring-emerald-200"] {
+  --tw-ring-color: #b8e3c8 !important;
 }
