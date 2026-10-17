@@ -185,6 +185,7 @@ export default function Home() {
   );
 
   return (
+    <>
     <div className="min-h-screen bg-[#f7f8fa] text-slate-900">
       <div className="flex min-h-screen">
 
@@ -603,6 +604,7 @@ export default function Home() {
           </div>
         </div>
       )}
+    </>
   );
 }
 
