@@ -12,6 +12,7 @@ import {
   DoorOpen,
   GraduationCap,
   Plus,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 
@@ -478,6 +479,14 @@ export default function WeeklySchedulePage() {
               <CalendarDays className="h-[18px] w-[18px] text-white" />
               Расписание
               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
+            </Link>
+
+            <Link
+              href="/optimization"
+              className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+            >
+              <Sparkles className="h-[18px] w-[18px] text-slate-400" />
+              Оптимизация
             </Link>
           </nav>
 
