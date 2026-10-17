@@ -10,6 +10,7 @@ from app.models.lesson import Lesson
 from app.models.lesson_requirement import LessonRequirement
 from app.models.schedule_entry import ScheduleEntry
 from app.models.room_connection import RoomConnection
+from app.models.weekly_schedule_entry import WeeklyScheduleEntry
 
 from app.routers.schedule import router as schedule_router
 from app.routers.recommendation import router as recommendation_router
@@ -19,11 +20,13 @@ from app.routers.teachers import router as teachers_router
 from app.routers.subjects import router as subjects_router
 from app.routers.student_groups import router as student_groups_router
 from app.routers.lessons import router as lessons_router
+from app.routers.optimization import router as optimization_router
+from app.routers.weekly_schedule import router as weekly_schedule_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers.weekly_schedule import router as weekly_schedule_router
-from app.models.weekly_schedule_entry import WeeklyScheduleEntry
+
+
 
 
 app = FastAPI(
@@ -48,21 +51,14 @@ app.include_router(
     recommendation_router
 )
 app.include_router(dashboard_router)
-
 app.include_router(schedule_router)
-
 app.include_router(weekly_schedule_router)
-
 app.include_router(rooms_router)
-
 app.include_router(teachers_router)
-
 app.include_router(subjects_router)
-
 app.include_router(student_groups_router)
-
 app.include_router(lessons_router)
-
+app.include_router(optimization_router)
 Base.metadata.create_all(bind=engine)
 
 @app.get("/")

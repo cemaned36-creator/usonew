@@ -49,7 +49,10 @@ def calculate_current_metrics(
     for teacher_id, teacher_schedule in teacher_entries.items():
 
         teacher_schedule.sort(
-            key=lambda entry: entry.start_time
+            key=lambda entry: (
+                entry.date,
+                entry.start_time,
+            )
         )
 
         previous_entry = None
@@ -57,6 +60,11 @@ def calculate_current_metrics(
         for entry in teacher_schedule:
 
             if previous_entry is None:
+                previous_entry = entry
+                continue
+
+            # Не считаем переход между разными днями
+            if previous_entry.date != entry.date:
                 previous_entry = entry
                 continue
 
@@ -219,7 +227,12 @@ def calculate_optimized_metrics(
         previous_data = teacher_previous.get(
             lesson.teacher_id
         )
-
+        if (
+            previous_data
+            and previous_data["entry"].date != entry.date
+        ):
+            previous_data = None
+            
         previous_room_id = None
         previous_access_type = None
         available_transition_minutes = None
@@ -292,9 +305,9 @@ def calculate_optimized_metrics(
         )
 
         if not result or not result["room_id"]:
-
-            # Если optimizer не смог подобрать
-            # аудиторию — оставляем текущую.
+            # Подходящая аудитория не найдена.
+            # Сохраняем исходную для отображения,
+            # но помечаем назначение как непроверенное.
             room_id = entry.room_id
 
             room = (
@@ -303,16 +316,18 @@ def calculate_optimized_metrics(
                 .first()
             )
 
-            access_type = (
-                room.access_type
-                if room
-                else None
+            access_type = room.access_type if room else None
+            optimized = False
+            optimization_reason = (
+                result["reason"]
+                if result
+                else "Оптимизатор не вернул результат"
             )
-
         else:
-
             room_id = result["room_id"]
             access_type = result["access_type"]
+            optimized = True
+            optimization_reason = result["reason"]
 
         # -------------------------------------------------
         # Сохраняем симулированное назначение
@@ -321,6 +336,8 @@ def calculate_optimized_metrics(
         assignments[entry.id] = {
             "room_id": room_id,
             "access_type": access_type,
+            "optimized": optimized,
+            "reason": optimization_reason,
         }
 
         simulated_entries.append(
@@ -367,7 +384,10 @@ def calculate_optimized_metrics(
     for teacher_id, teacher_schedule in teacher_entries.items():
 
         teacher_schedule.sort(
-            key=lambda entry: entry.start_time
+            key=lambda entry: (
+                entry.date,
+                entry.start_time,
+            )
         )
 
         previous_entry = None
@@ -375,6 +395,11 @@ def calculate_optimized_metrics(
         for entry in teacher_schedule:
 
             if previous_entry is None:
+                previous_entry = entry
+                continue
+
+            # Не считаем переход между разными днями
+            if previous_entry.date != entry.date:
                 previous_entry = entry
                 continue
 
@@ -428,39 +453,51 @@ def calculate_optimized_metrics(
 
     optimized_conflicts = set()
 
-    for i, first in enumerate(
-        simulated_entries
-    ):
-
-        for second in simulated_entries[
-            i + 1 :
-        ]:
-
+    for i, first in enumerate(simulated_entries):
+        for second in simulated_entries[i + 1:]:
+            # Сравниваем только занятия одного дня
             if first["date"] != second["date"]:
                 continue
 
+            # Проверяем пересечение по времени
             overlap = (
-                first["start_time"]
-                < second["end_time"]
-                and first["end_time"]
-                > second["start_time"]
+                first["start_time"] < second["end_time"]
+                and first["end_time"] > second["start_time"]
             )
 
             if not overlap:
                 continue
 
-            if (
-                first["room_id"]
-                == second["room_id"]
-            ):
+            # Конфликт одной аудитории
+            if first["room_id"] == second["room_id"]:
+                optimized_conflicts.add(first["entry_id"])
+                optimized_conflicts.add(second["entry_id"])
 
-                optimized_conflicts.add(
-                    first["entry_id"]
-                )
+            # Загружаем занятия для проверки преподавателей и групп
+            first_lesson = (
+                db.query(Lesson)
+                .filter(Lesson.id == first["lesson_id"])
+                .first()
+            )
 
-                optimized_conflicts.add(
-                    second["entry_id"]
-                )
+            second_lesson = (
+                db.query(Lesson)
+                .filter(Lesson.id == second["lesson_id"])
+                .first()
+            )
+
+            if not first_lesson or not second_lesson:
+                continue
+
+            # Конфликт преподавателя
+            if first_lesson.teacher_id == second_lesson.teacher_id:
+                optimized_conflicts.add(first["entry_id"])
+                optimized_conflicts.add(second["entry_id"])
+
+            # Конфликт учебной группы
+            if first_lesson.group_id == second_lesson.group_id:
+                optimized_conflicts.add(first["entry_id"])
+                optimized_conflicts.add(second["entry_id"])
 
     
     # -----------------------------------------------------

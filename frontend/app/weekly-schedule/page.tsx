@@ -63,11 +63,26 @@ export default function WeeklySchedulePage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [teachers, setTeachers] = useState<NamedOption[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [showTeacherSuggestions, setShowTeacherSuggestions] = useState(false);
   const [subjects, setSubjects] = useState<NamedOption[]>([]);
   const [groups, setGroups] = useState<NamedOption[]>([]);
   const [rooms, setRooms] = useState<NamedOption[]>([]);
+  const lessonPairs = [
+    { number: 1, start: "08:30", end: "10:05", label: "1-я пара (08:00–10:05)" },
+    { number: 2, start: "10:15", end: "11:50", label: "2-я пара (10:15–11:50)" },
+    { number: 3, start: "12:00", end: "13:35", label: "3-я пара (12:00–13:35)" },
+    { number: 4, start: "14:30", end: "16:05", label: "4-я пара (14:30–16:05)" },
+    { number: 5, start: "16:15", end: "17:50", label: "5-я пара (16:15–17:50)" },
+    { number: 6, start: "18:00", end: "19:35", label: "6-я пара (18:00–19:35)" },
+  ];
 
-  
+  const getLessonPair = (startTime: string, endTime: string) =>
+  lessonPairs.find(
+    (pair) => pair.start === startTime && pair.end === endTime
+  );
+
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any>(null);
   const [importing, setImporting] = useState(false);
@@ -387,7 +402,21 @@ export default function WeeklySchedulePage() {
   }
 
 
-  const totalLessons = entries.length;
+  const filteredEntries = entries.filter((entry) => {
+    if (selectedTeacherId === "") {
+      return true;
+    }
+
+    const lesson = lessons.find(
+      (item) => item.id === entry.lesson_id
+    );
+
+    return (
+      lesson?.teacher_id === Number(selectedTeacherId)
+    );
+  });
+
+  const totalLessons = filteredEntries.length;
 
   if (loading) {
     return (
@@ -400,6 +429,12 @@ export default function WeeklySchedulePage() {
     );
   }
 
+  const filteredTeachers = teachers.filter((teacher) =>
+    teacher.name
+      .toLowerCase()
+      .includes(teacherSearch.trim().toLowerCase())
+  );
+  
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-slate-900">
       <div className="flex min-h-screen">
@@ -706,33 +741,31 @@ export default function WeeklySchedulePage() {
                   </select>
                 </label>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className={labelClass}>
                     <span className="flex items-center gap-2">
                       <Clock3 className="h-4 w-4 text-slate-400" />
-                      Начало
+                      Учебная пара
                     </span>
-                    <input
-                      type="time"
-                      required
-                      value={start}
-                      onChange={(event) => setStart(event.target.value)}
-                      className={fieldClass}
-                    />
-                  </label>
 
-                  <label className={labelClass}>
-                    <span className="flex items-center gap-2">
-                      <Clock3 className="h-4 w-4 text-slate-400" />
-                      Окончание
-                    </span>
-                    <input
-                      type="time"
+                    <select
                       required
-                      value={end}
-                      onChange={(event) => setEnd(event.target.value)}
+                      value={`${start}-${end}`}
+                      onChange={(event) => {
+                        const [newStart, newEnd] = event.target.value.split("-");
+                        setStart(newStart);
+                        setEnd(newEnd);
+                      }}
                       className={fieldClass}
-                    />
+                    >
+                      <option value="">Выберите пару</option>
+                      <option value="08:30-10:05">1-я пара (08:30–10:05)</option>
+                      <option value="10:15-11:50">2-я пара (10:15–11:50)</option>
+                      <option value="12:00-13:35">3-я пара (12:00–13:35)</option>
+                      <option value="14:30-16:05">4-я пара (14:30–16:05)</option>
+                      <option value="16:15-17:50">5-я пара (16:15–17:50)</option>
+                      <option value="18:00-19:35">6-я пара (18:00–19:35)</option>
+                    </select>
                   </label>
                 </div>
 
@@ -776,6 +809,98 @@ export default function WeeklySchedulePage() {
             {/* Расписание по дням */}
             <section>
               <div className="mb-4">
+                <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
+                  <label
+                    htmlFor="teacher-filter"
+                    className={labelClass}
+                  >
+                    Расписание преподавателя
+                  </label>
+
+                  <select
+                    id="teacher-filter"
+                    value={selectedTeacherId}
+                    onChange={(event) =>
+                      setSelectedTeacherId(event.target.value)
+                    }
+                    className={fieldClass}
+                  >
+                    <option value="">Все преподаватели</option>
+
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="relative mb-4 rounded-2xl border border-slate-200 bg-white p-5">
+                    <label
+                      htmlFor="teacher-search"
+                      className={`${labelClass} block`}
+                    >
+                      Поиск преподавателя
+                    </label>
+
+                    <input
+                      id="teacher-search"
+                      type="text"
+                      value={teacherSearch}
+                      onChange={(event) => {
+                        setTeacherSearch(event.target.value);
+                        setSelectedTeacherId("");
+                        setShowTeacherSuggestions(true);
+                      }}
+                      onFocus={() => setShowTeacherSuggestions(true)}
+                      onBlur={() => {
+                        setTimeout(() => setShowTeacherSuggestions(false), 150);
+                      }}
+                      placeholder="Введите имя преподавателя..."
+                      autoComplete="off"
+                      className={fieldClass}
+                    />
+
+                    {showTeacherSuggestions && teacherSearch.trim() !== "" && (
+                      <div className="absolute left-5 right-5 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                        {filteredTeachers.length > 0 ? (
+                          filteredTeachers.map((teacher) => (
+                            <button
+                              key={teacher.id}
+                              type="button"
+                              className="block w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-100"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                setSelectedTeacherId(String(teacher.id));
+                                setTeacherSearch(teacher.name);
+                                setShowTeacherSuggestions(false);
+                              }}
+                            >
+                              {teacher.name}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="px-4 py-3 text-sm text-slate-500">
+                            Преподаватели не найдены
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedTeacherId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTeacherId("");
+                          setTeacherSearch("");
+                          setShowTeacherSuggestions(false);
+                        }}
+                        className="mt-3 text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Показать всех преподавателей
+                      </button>
+                    )}
+                  </div>
+
+                </div>  
                 <h2 className="text-base font-semibold text-slate-900">
                   Занятия по дням недели
                 </h2>
@@ -786,7 +911,7 @@ export default function WeeklySchedulePage() {
 
               <div className="space-y-4">
                 {days.map((day, index) => {
-                  const dayEntries = entries
+                  const dayEntries = filteredEntries
                     .filter((entry) => entry.weekday === index)
                     .sort((a, b) =>
                       a.start_time.localeCompare(b.start_time)
@@ -847,6 +972,29 @@ export default function WeeklySchedulePage() {
                                   </div>
 
                                   <div className="min-w-0 flex-1 self-center">
+                                    {(() => {
+                                      const pair = [
+                                        { number: 1, start: "08:30", end: "10:05" },
+                                        { number: 2, start: "10:15", end: "11:50" },
+                                        { number: 3, start: "12:00", end: "13:35" },
+                                        { number: 4, start: "14:30", end: "16:05" },
+                                        { number: 5, start: "16:15", end: "17:50" },
+                                        { number: 6, start: "18:00", end: "19:35" },
+                                      ].find(
+                                        (pair) =>
+                                          pair.start === entry.start_time &&
+                                          pair.end === entry.end_time
+                                      );
+
+                                      return (
+                                        <p className="mb-1 text-xs font-semibold text-blue-700">
+                                          {pair
+                                            ? `${pair.number}-я пара`
+                                            : "Время вне стандартных пар"}
+                                        </p>
+                                      );
+                                    })()}
+
                                     <p className="break-words text-sm font-medium leading-5 text-slate-800">
                                       {lessonLabel(entry.lesson_id)}
                                     </p>

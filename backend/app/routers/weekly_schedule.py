@@ -18,6 +18,8 @@ from app.models.subject import Subject
 from app.models.teacher import Teacher
 from app.models.student_group import StudentGroup
 
+from app.services.lesson_times import get_lesson_pair
+
 from datetime import time, datetime
 
 router = APIRouter(
@@ -237,6 +239,13 @@ async def preview_schedule_import(
             if start_time >= end_time:
                 issues.append("Время окончания должно быть позже начала")
 
+            elif get_lesson_pair(start_time, end_time) is None:
+                issues.append(
+                    "Недопустимое время. Разрешены пары: "
+                    "08:30–10:05, 10:15–11:50, 12:00–13:35, "
+                    "14:30–16:05, 16:15–17:50, 18:00–19:35."
+                )
+
         if weekday is None:
             issues.append(
                 "День недели должен быть числом от 0 до 6 "
@@ -407,6 +416,16 @@ async def import_weekly_schedule(
                     detail=(
                         f"Некорректные день или время "
                         f"в строке Excel {row['excel_row']}."
+                    ),
+                )
+
+            if get_lesson_pair(start_time, end_time) is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Недопустимое время в строке Excel "
+                        f"{row['excel_row']}. Используйте одну из шести "
+                        "установленных учебных пар."
                     ),
                 )
 
@@ -701,6 +720,15 @@ def assign_lesson(
             "Время окончания должно быть позже времени начала",
         )
 
+    if get_lesson_pair(data.start_time, data.end_time) is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Недопустимое время занятия. "
+                "Выберите одну из шести установленных учебных пар."
+            ),
+        )
+
     existing = (
         db.query(WeeklyScheduleEntry)
         .filter(
@@ -837,6 +865,7 @@ def assign_lesson(
             available_minutes=available_minutes,
         )
 
+    
     # Сохраняем запись только после успешных проверок.
     entry = WeeklyScheduleEntry(
         lesson_id=data.lesson_id,

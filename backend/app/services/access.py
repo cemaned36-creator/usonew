@@ -1,21 +1,21 @@
+
 from sqlalchemy.orm import Session
 
-from app.models.room import Room
 from app.services.distance import (
     get_travel_time,
     get_room_to_access_point_time,
     get_access_point_to_room_time,
 )
 
-
-# ID точки выдачи/возврата ключей
+# ID точки выдачи и возврата ключей
 KEY_DESK_ID = 1
 
-# Время получения ключа
+# Время получения и возврата ключей, минуты
 KEY_PICKUP_TIME = 5
-
-# Время возврата ключа
 KEY_RETURN_TIME = 5
+
+# Типы доступа без получения ключа
+NO_KEY_ACCESS_TYPES = {"OPEN", "PASS"}
 
 
 def calculate_transition_time(
@@ -26,65 +26,62 @@ def calculate_transition_time(
     target_access_type: str,
 ):
     """
-    Рассчитывает полное время перехода преподавателя
-    из предыдущей аудитории в целевую.
+    Рассчитывает полное время перехода между аудиториями.
 
-    Учитываются:
-    - перемещение между аудиториями;
-    - путь до точки выдачи ключей;
-    - получение ключа;
-    - возврат ключа.
+    OPEN — свободный вход.
+    PASS — вход по пропуску.
+    KEY — требуется получение/возврат ключа.
+
+    Возвращает словарь с total_time, travel_time и key_time.
+    Если маршрут не найден, возвращает None.
     """
 
-    # ---------------------------------------------------------
-    # 1. Первое занятие
-    # ---------------------------------------------------------
-
-    if previous_room_id is None:
-        if target_access_type == "PASS":
-            return {
-                "total_time": 0,
-                "travel_time": 0,
-                "key_time": 0,
-            }
-
-        if target_access_type == "KEY":
-            travel_time = get_access_point_to_room_time(
-                db=db,
-                access_point_id=KEY_DESK_ID,
-                room_id=target_room_id,
-            )
-
-            if travel_time is None:
-                return None
-
-            key_time = KEY_PICKUP_TIME
-
-            return {
-                "total_time": travel_time + key_time,
-                "travel_time": travel_time,
-                "key_time": key_time,
-            }
-
-    # ---------------------------------------------------------
-    # 2. Предыдущая аудитория и текущая аудитория одинаковые
-    # ---------------------------------------------------------
-
-    if previous_room_id == target_room_id:
-        if previous_access_type == target_access_type:
-            return {
-                "total_time": 0,
-                "travel_time": 0,
-                "key_time": 0,
-            }
-
-    # ---------------------------------------------------------
-    # 3. PASS -> PASS
-    # ---------------------------------------------------------
+    # Проверяем тип доступа целевой аудитории
+    if target_access_type not in {"OPEN", "PASS", "KEY"}:
+        return None
 
     if (
-        previous_access_type == "PASS"
-        and target_access_type == "PASS"
+        previous_access_type is not None
+        and previous_access_type not in {"OPEN", "PASS", "KEY"}
+    ):
+        return None
+
+    # Первое занятие: перехода из предыдущей аудитории нет
+    if previous_room_id is None:
+        if target_access_type in NO_KEY_ACCESS_TYPES:
+            return {
+                "total_time": 0,
+                "travel_time": 0,
+                "key_time": 0,
+            }
+
+        travel_time = get_access_point_to_room_time(
+            db=db,
+            access_point_id=KEY_DESK_ID,
+            room_id=target_room_id,
+        )
+
+        if travel_time is None:
+            return None
+
+        return {
+            "total_time": travel_time + KEY_PICKUP_TIME,
+            "travel_time": travel_time,
+            "key_time": KEY_PICKUP_TIME,
+        }
+
+    # Если аудитория та же, перемещение не требуется
+    if previous_room_id == target_room_id:
+        return {
+            "total_time": 0,
+            "travel_time": 0,
+            "key_time": 0,
+        }
+
+    # OPEN/PASS -> OPEN/PASS: идём напрямую
+    if (
+        previous_access_type in NO_KEY_ACCESS_TYPES
+        and target_access_type in NO_KEY_ACCESS_TYPES
     ):
         travel_time = get_travel_time(
             db=db,
@@ -101,20 +98,9 @@ def calculate_transition_time(
             "key_time": 0,
         }
 
-    # ---------------------------------------------------------
-    # 4. PASS -> KEY
-    #
-    # Аудитория 1
-    #     ↓
-    # Охрана
-    #     ↓
-    # получение ключа
-    #     ↓
-    # Аудитория 2
-    # ---------------------------------------------------------
-
+    # OPEN/PASS -> KEY: идём к охране, берём ключ, идём в аудиторию
     if (
-        previous_access_type == "PASS"
+        previous_access_type in NO_KEY_ACCESS_TYPES
         and target_access_type == "KEY"
     ):
         to_desk_time = get_room_to_access_point_time(
@@ -132,35 +118,19 @@ def calculate_transition_time(
         if to_desk_time is None or from_desk_time is None:
             return None
 
+        travel_time = to_desk_time + from_desk_time
         key_time = KEY_PICKUP_TIME
 
-        total_time = (
-            to_desk_time
-            + key_time
-            + from_desk_time
-        )
-
         return {
-            "total_time": total_time,
-            "travel_time": to_desk_time + from_desk_time,
+            "total_time": travel_time + key_time,
+            "travel_time": travel_time,
             "key_time": key_time,
         }
 
-    # ---------------------------------------------------------
-    # 5. KEY -> PASS
-    #
-    # Аудитория 1
-    #     ↓
-    # Охрана
-    #     ↓
-    # возврат ключа
-    #     ↓
-    # Аудитория 2
-    # ---------------------------------------------------------
-
+    # KEY -> OPEN/PASS: возвращаем ключ и идём в аудиторию
     if (
         previous_access_type == "KEY"
-        and target_access_type == "PASS"
+        and target_access_type in NO_KEY_ACCESS_TYPES
     ):
         to_desk_time = get_room_to_access_point_time(
             db=db,
@@ -177,34 +147,16 @@ def calculate_transition_time(
         if to_desk_time is None or from_desk_time is None:
             return None
 
+        travel_time = to_desk_time + from_desk_time
         key_time = KEY_RETURN_TIME
 
-        total_time = (
-            to_desk_time
-            + key_time
-            + from_desk_time
-        )
-
         return {
-            "total_time": total_time,
-            "travel_time": to_desk_time + from_desk_time,
+            "total_time": travel_time + key_time,
+            "travel_time": travel_time,
             "key_time": key_time,
         }
 
-    # ---------------------------------------------------------
-    # 6. KEY -> KEY
-    #
-    # Аудитория 1
-    #     ↓
-    # Охрана
-    #     ↓
-    # возврат первого ключа
-    #     ↓
-    # получение второго ключа
-    #     ↓
-    # Аудитория 2
-    # ---------------------------------------------------------
-
+    # KEY -> KEY: возвращаем первый ключ и получаем второй
     if (
         previous_access_type == "KEY"
         and target_access_type == "KEY"
@@ -224,20 +176,12 @@ def calculate_transition_time(
         if to_desk_time is None or from_desk_time is None:
             return None
 
-        key_time = (
-            KEY_RETURN_TIME
-            + KEY_PICKUP_TIME
-        )
-
-        total_time = (
-            to_desk_time
-            + key_time
-            + from_desk_time
-        )
+        travel_time = to_desk_time + from_desk_time
+        key_time = KEY_RETURN_TIME + KEY_PICKUP_TIME
 
         return {
-            "total_time": total_time,
-            "travel_time": to_desk_time + from_desk_time,
+            "total_time": travel_time + key_time,
+            "travel_time": travel_time,
             "key_time": key_time,
         }
 
