@@ -242,6 +242,7 @@ export default function Home() {
               <SidebarItem
                 icon={Settings}
                 label="Настройки"
+                href="#"
               />
 
             </div>
