@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -445,6 +445,7 @@ async def import_weekly_schedule(
                 WeeklyScheduleEntry(
                     lesson_id=lesson.id,
                     weekday=weekday,
+                    week_type="both",
                     room_id=room.id,
                     start_time=start_time,
                     end_time=end_time,
@@ -662,10 +663,15 @@ def check_transition(
 
 
 @router.get("/")
-def get_weekly_schedule(db: Session = Depends(get_db)):
+def get_weekly_schedule(
+    week_type: str = Query("both", pattern="^(odd|even|both)$"),
+    db: Session = Depends(get_db),
+):
+    query = db.query(WeeklyScheduleEntry)
+    if week_type in ("odd", "even"):
+        query = query.filter(WeeklyScheduleEntry.week_type.in_([week_type, "both"]))
     entries = (
-        db.query(WeeklyScheduleEntry)
-        .order_by(
+        query.order_by(
             WeeklyScheduleEntry.weekday,
             WeeklyScheduleEntry.start_time,
         )
@@ -686,6 +692,7 @@ def get_weekly_schedule(db: Session = Depends(get_db)):
         result.append({
             "id": entry.id,
             "lesson_id": entry.lesson_id,
+            "week_type": entry.week_type,
             "weekday": weekday,
             "start_time": start_time.strftime("%H:%M") if start_time else None,
             "end_time": end_time.strftime("%H:%M") if end_time else None,
@@ -729,14 +736,15 @@ def assign_lesson(
             ),
         )
 
-    existing = (
-        db.query(WeeklyScheduleEntry)
-        .filter(
-            WeeklyScheduleEntry.lesson_id == data.lesson_id,
-            WeeklyScheduleEntry.weekday == data.weekday,
-        )
-        .first()
+    existing_query = db.query(WeeklyScheduleEntry).filter(
+        WeeklyScheduleEntry.lesson_id == data.lesson_id,
+        WeeklyScheduleEntry.weekday == data.weekday,
     )
+    if data.week_type in ("odd", "even"):
+        existing_query = existing_query.filter(
+            WeeklyScheduleEntry.week_type.in_([data.week_type, "both"])
+        )
+    existing = existing_query.first()
 
     if existing:
         raise HTTPException(
@@ -745,13 +753,14 @@ def assign_lesson(
         )
 
 
-    entries = (
-        db.query(WeeklyScheduleEntry)
-        .filter(
-            WeeklyScheduleEntry.weekday == data.weekday
-        )
-        .all()
+    entries_query = db.query(WeeklyScheduleEntry).filter(
+        WeeklyScheduleEntry.weekday == data.weekday
     )
+    if data.week_type in ("odd", "even"):
+        entries_query = entries_query.filter(
+            WeeklyScheduleEntry.week_type.in_([data.week_type, "both"])
+        )
+    entries = entries_query.all()
 
     # Сначала проверяем конфликты расписания.
     for entry in entries:
@@ -870,6 +879,7 @@ def assign_lesson(
     entry = WeeklyScheduleEntry(
         lesson_id=data.lesson_id,
         weekday=data.weekday,
+        week_type=data.week_type,
         room_id=data.room_id,
         start_time=data.start_time,
         end_time=data.end_time,
