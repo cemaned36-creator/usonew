@@ -33,7 +33,7 @@ type ScheduleItem = {
   access_type: string;
 };
 
-type Главная страницаData = {
+type DashboardData = {
   stats: {
     lessons: number;
     teachers: number;
@@ -51,8 +51,8 @@ type Главная страницаData = {
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 export default function Home() {
-  const [dashboard, setГлавная страница] =
-    useState<Главная страницаData | null>(null);
+  const [dashboard, setDashboard] =
+    useState<DashboardData | null>(null);
 
   const [loading, setLoading] = useState(true);
 
@@ -96,7 +96,7 @@ export default function Home() {
       .then((data) => setTeachers(Array.isArray(data) ? data : []))
       .catch(() => setTeachers([]));
 
-    async function loadГлавная страница() {
+    async function loadDashboard() {
       try {
         console.log("API URL:", API);
 
@@ -108,14 +108,14 @@ export default function Home() {
           throw new Error(`API error: ${response.status}`);
         }
 
-        const data: Главная страницаData = await response.json();
+        const data: DashboardData = await response.json();
 
-        console.log("Главная страница data:", data);
+        console.log("Dashboard data:", data);
 
-        setГлавная страница(data);
-        console.log("Данные переданы в setГлавная страница");
+        setDashboard(data);
+        console.log("Данные переданы в setDashboard");
       } catch (error) {
-        console.error("Ошибка загрузки Главная страница:", error);
+        console.error("Ошибка загрузки Dashboard:", error);
 
         setError("Не удалось подключиться к API");
       } finally {
@@ -124,7 +124,7 @@ export default function Home() {
       }
     }
 
-    loadГлавная страница();
+    loadDashboard();
   }, []);
 
   /* =========================
@@ -138,7 +138,7 @@ export default function Home() {
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-800" />
 
           <span>
-            Загрузка Главная страница...
+            Загрузка Dashboard...
           </span>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default function Home() {
           </div>
 
           <h2 className="mt-4 text-base font-semibold text-slate-800">
-            Не удалось загрузить Главная страница
+            Не удалось загрузить Dashboard
           </h2>
 
           <p className="mt-2 text-sm text-slate-400">
@@ -208,7 +208,7 @@ export default function Home() {
               </div>
 
               <div className="text-[12px] text-slate-400">
-                Оптимизатор расписания by AlyaIT
+                Schedule Optimizer
               </div>
             </div>
           </div>
@@ -224,8 +224,8 @@ export default function Home() {
             <div className="space-y-1">
 
               <SidebarItem
-                icon={LayoutГлавная страница}
-                label="Главная страница"
+                icon={LayoutDashboard}
+                label="Dashboard"
                 href="/"
                 active
               />
@@ -315,7 +315,7 @@ export default function Home() {
             <div>
 
               <h1 className="text-xl font-semibold tracking-tight">
-                Главная страница
+                Dashboard
               </h1>
 
               <p className="mt-0.5 text-sm text-slate-400">
