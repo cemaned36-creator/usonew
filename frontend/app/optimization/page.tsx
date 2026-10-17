@@ -254,7 +254,7 @@ export default function OptimizationPage() {
             </p>
           </div>
         </div>
-        <div className="max-h-[820px] space-y-4 overflow-y-auto p-3 sm:p-4">
+        <div className="space-y-4 p-3 sm:p-4">
           {DAYS.map((day, dayIndex) => {
             const dayEntries = items
               .filter((entry) => entry.weekday === dayIndex)
