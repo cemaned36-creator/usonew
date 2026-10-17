@@ -140,8 +140,15 @@ export default function TeachersPage() {
                 {filteredTeachers.map((teacher) => {
                   const teacherLessons = lessons.filter((lesson) => lesson.teacher_id === teacher.id);
                   const expanded = expandedId === teacher.id;
-                  const uniqueSubjects = Array.from(new Set(teacherLessons.map((lesson) => lesson.subject_id)));
-                  const uniqueGroups = Array.from(new Set(teacherLessons.map((lesson) => lesson.group_id)));
+                  const subjectGroups = Array.from(new Set(teacherLessons.map((lesson) => lesson.subject_id))).map((subjectId) => ({
+                    subjectId,
+                    subjectName: subjectById.get(subjectId)?.name ?? `Дисциплина #${subjectId}`,
+                    groupNames: Array.from(new Set(
+                      teacherLessons
+                        .filter((lesson) => lesson.subject_id === subjectId)
+                        .map((lesson) => lesson.group_id)
+                    )).map((groupId) => groupById.get(groupId)?.name ?? `Группа #${groupId}`),
+                  }));
                   return (
                     <section key={teacher.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:border-slate-300">
                       <button type="button" aria-expanded={expanded} onClick={() => setExpandedId(expanded ? null : teacher.id)} className="flex w-full items-center gap-4 px-5 py-4 text-left sm:px-6">
@@ -151,7 +158,7 @@ export default function TeachersPage() {
                         <div className="min-w-0 flex-1">
                           <h2 className="truncate text-sm font-semibold text-slate-900">{teacher.name}</h2>
                           <p className="mt-1 text-xs text-slate-400">
-                            {uniqueSubjects.length} {uniqueSubjects.length === 1 ? "дисциплина" : "дисциплин"} · {uniqueGroups.length} {uniqueGroups.length === 1 ? "группа" : "групп"}
+                            {subjectGroups.length} {subjectGroups.length === 1 ? "дисциплина" : "дисциплин"} · {new Set(teacherLessons.map((lesson) => lesson.group_id)).size} {new Set(teacherLessons.map((lesson) => lesson.group_id)).size === 1 ? "группа" : "групп"}
                           </p>
                         </div>
                         <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
@@ -162,26 +169,25 @@ export default function TeachersPage() {
                           {teacherLessons.length === 0 ? (
                             <p className="text-sm text-slate-500">За этим преподавателем пока не закреплены дисциплины и группы.</p>
                           ) : (
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                                  <BookOpen className="h-4 w-4 text-slate-500" /> Дисциплины
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {uniqueSubjects.map((id) => (
-                                    <span key={id} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700">{subjectById.get(id)?.name ?? `Дисциплина #${id}`}</span>
-                                  ))}
-                                </div>
+                            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                              <div className="grid grid-cols-1 gap-2 bg-slate-100 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)] sm:gap-4">
+                                <div>Дисциплина</div>
+                                <div>Учебные группы</div>
                               </div>
-                              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                                  <Users className="h-4 w-4 text-slate-500" /> Учебные группы
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {uniqueGroups.map((id) => (
-                                    <span key={id} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700">{groupById.get(id)?.name ?? `Группа #${id}`}</span>
-                                  ))}
-                                </div>
+                              <div className="divide-y divide-slate-100">
+                                {subjectGroups.map(({ subjectId, subjectName, groupNames }) => (
+                                  <div key={subjectId} className="grid grid-cols-1 gap-2 px-4 py-4 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)] sm:items-start sm:gap-4">
+                                    <div className="flex items-start gap-2 text-sm font-semibold text-slate-800">
+                                      <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                      <span>{subjectName}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {groupNames.length ? groupNames.map((groupName) => (
+                                        <span key={groupName} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700">{groupName}</span>
+                                      )) : <span className="text-sm text-slate-400">Группы не указаны</span>}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           )}
