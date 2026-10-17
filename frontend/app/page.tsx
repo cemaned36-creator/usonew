@@ -57,13 +57,45 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
+  const [teachers, setTeachers] = useState<{ id: number; name: string }[]>([]);
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [selectedProfile, setSelectedProfile] = useState<{ role: "admin" | "teacher"; teacherId?: number; name: string } | null>(null);
+  const [showProfilePicker, setShowProfilePicker] = useState(false);
+
+  function chooseProfile(profile: { role: "admin" | "teacher"; teacherId?: number; name: string }) {
+    localStorage.setItem("uso-user-profile", JSON.stringify(profile));
+    setSelectedProfile(profile);
+    setShowProfilePicker(false);
+    setTeacherSearch("");
+  }
 
   /* =========================
      LOAD DATA FROM FASTAPI
   ========================= */
 
   useEffect(() => {
-        
+    try {
+      const savedProfile = localStorage.getItem("uso-user-profile");
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
+        if (parsed?.role === "admin" || (parsed?.role === "teacher" && parsed?.teacherId)) {
+          setSelectedProfile(parsed);
+        } else {
+          setShowProfilePicker(true);
+        }
+      } else {
+        setShowProfilePicker(true);
+      }
+    } catch {
+      localStorage.removeItem("uso-user-profile");
+      setShowProfilePicker(true);
+    }
+
+    fetch(`${API}/teachers/`)
+      .then((response) => response.ok ? response.json() : [])
+      .then((data) => setTeachers(Array.isArray(data) ? data : []))
+      .catch(() => setTeachers([]));
+
     async function loadDashboard() {
       try {
         console.log("API URL:", API);
@@ -145,6 +177,13 @@ export default function Home() {
     );
   }
 
+  const visibleSchedule = selectedProfile?.role === "teacher"
+    ? dashboard.schedule.filter((item) => item.teacher === selectedProfile.name)
+    : dashboard.schedule;
+  const matchingTeachers = teachers.filter((teacher) =>
+    teacher.name.toLowerCase().includes(teacherSearch.trim().toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-slate-900">
       <div className="flex min-h-screen">
@@ -208,11 +247,13 @@ export default function Home() {
                 href="#"
               />
 
-              <SidebarItem
-                icon={Sparkles}
-                label="Оптимизация"
-                href="/optimization"
-              />
+              {selectedProfile?.role !== "teacher" && (
+                <SidebarItem
+                  icon={Sparkles}
+                  label="Оптимизация"
+                  href="/optimization"
+                />
+              )}
 
             </div>
 
@@ -277,7 +318,7 @@ export default function Home() {
               </h1>
 
               <p className="mt-0.5 text-sm text-slate-400">
-                Обзор расписания университета
+                {selectedProfile?.role === "teacher" ? `Личный кабинет преподавателя: ${selectedProfile.name}` : "Обзор расписания университета"}
               </p>
 
             </div>
@@ -303,9 +344,14 @@ export default function Home() {
 
               </div>
 
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white">
+              <button
+                type="button"
+                onClick={() => setShowProfilePicker(true)}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50"
+              >
                 <Users className="h-4 w-4 text-slate-500" />
-              </div>
+                <span className="hidden sm:inline">{selectedProfile?.name ?? "Выбрать пользователя"}</span>
+              </button>
 
             </div>
 
@@ -368,7 +414,7 @@ export default function Home() {
 
             <section className="mt-6 w-full">
               <Link
-                href="/weekly-schedule"
+                href={selectedProfile?.role === "teacher" ? `/weekly-schedule?teacherId=${selectedProfile.teacherId}` : "/weekly-schedule"}
                 className="group block overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
               >
 
@@ -397,7 +443,7 @@ export default function Home() {
 
                 {/* Schedule */}
 
-                {dashboard.schedule.length === 0 ? (
+                {visibleSchedule.length === 0 ? (
 
                   <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
 
@@ -419,14 +465,14 @@ export default function Home() {
 
                   <div>
 
-                    {dashboard.schedule.map(
+                    {visibleSchedule.map(
                       (item, index) => (
 
                         <div
                           key={item.id}
                           className={`grid grid-cols-[90px_minmax(220px,1.7fr)_minmax(160px,1fr)_100px_30px] items-center gap-4 px-5 py-4 sm:px-6 ${
                             index !==
-                            dashboard.schedule.length - 1
+                            visibleSchedule.length - 1
                               ? "border-b border-slate-100"
                               : ""
                           }`}
@@ -532,6 +578,31 @@ export default function Home() {
 
       </div>
     </div>
+
+      {showProfilePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="profile-picker-title" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+              <Users className="h-6 w-6 text-slate-700" />
+            </div>
+            <h2 id="profile-picker-title" className="mt-4 text-xl font-semibold">Кто будет пользоваться системой?</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-500">Выбери роль. Преподаватель сможет только просматривать своё расписание.</p>
+            <button type="button" onClick={() => chooseProfile({ role: "admin", name: "Администратор" })} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-slate-200 p-4 text-left transition hover:border-slate-400 hover:bg-slate-50">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white"><Settings className="h-5 w-5" /></div>
+              <div><div className="font-medium text-slate-800">Администратор</div><div className="mt-0.5 text-xs text-slate-500">Полный доступ к функциям управления</div></div>
+            </button>
+            <div className="mt-5">
+              <label htmlFor="teacher-profile-search" className="text-sm font-medium text-slate-700">Преподаватель</label>
+              <input id="teacher-profile-search" value={teacherSearch} onChange={(event) => setTeacherSearch(event.target.value)} placeholder="Начни вводить имя преподавателя..." className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10" />
+              <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-slate-100">
+                {matchingTeachers.length ? matchingTeachers.map((teacher) => (
+                  <button key={teacher.id} type="button" onClick={() => chooseProfile({ role: "teacher", teacherId: teacher.id, name: teacher.name })} className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-700 last:border-b-0 hover:bg-slate-50">{teacher.name}</button>
+                )) : <p className="px-4 py-3 text-sm text-slate-500">{teachers.length ? "Преподаватели не найдены" : "Список преподавателей пока недоступен"}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
 
