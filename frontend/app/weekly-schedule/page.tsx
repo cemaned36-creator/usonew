@@ -477,10 +477,10 @@ export default function WeeklySchedulePage() {
             </div>
             <div>
               <div className="text-[15px] font-semibold tracking-tight text-slate-900">
-                University
+                УрГУПС
               </div>
               <div className="text-xs text-slate-400">
-                Schedule Optimizer
+                Оптимизатор расписания ㅤby AlyaIT
               </div>
             </div>
           </Link>
@@ -495,7 +495,7 @@ export default function WeeklySchedulePage() {
               className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
             >
               <GraduationCap className="h-[18px] w-[18px] text-slate-400" />
-              Dashboard
+              Главная страница
             </Link>
 
             <Link
