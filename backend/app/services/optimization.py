@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from datetime import time
 
@@ -134,13 +133,13 @@ def _transition_minutes(db, previous, current, lessons, rooms):
     return result["total_time"]
 
 
-
 def _teacher_transition_total(entries, lessons, rooms, db):
     """Суммирует время переходов между занятиями преподавателей.
 
     Возвращает None, если хотя бы один необходимый переход
     невозможно рассчитать.
     """
+
     by_teacher_day = {}
 
     for entry in entries:
@@ -173,7 +172,6 @@ def _teacher_transition_total(entries, lessons, rooms, db):
     return total
 
 
-
 def _check_teacher_transitions(
     db, entries, changed_entry, lessons, rooms
 ):
@@ -193,7 +191,9 @@ def _check_teacher_transitions(
 
     teacher_entries.sort(key=lambda item: _minutes(item.start_time))
 
-    for previous, current in zip(teacher_entries, teacher_entries[1:]):
+    for previous, current in zip(
+        teacher_entries, teacher_entries[1:]
+    ):
         if previous.id != changed_entry.id and current.id != changed_entry.id:
             continue
 
@@ -213,9 +213,10 @@ def _optimize_entries(
     current_total = _teacher_transition_total(
         entries, lessons, rooms, db
     )
+
     if current_total is None:
         return
-    
+
     for entry in entries:
         lesson = lessons.get(entry.lesson_id)
 
@@ -251,7 +252,7 @@ def _optimize_entries(
                 entries, lessons, rooms, db
             )
 
-            if new_total < current_total:
+            if new_total is not None and new_total < current_total:
                 current_total = new_total
                 break
 
@@ -305,32 +306,7 @@ def preview_optimization(db: Session):
         group.id: group for group in db.query(StudentGroup).all()
     }
 
-    unknown_routes = []
-    by_teacher_day = {}
-
-    for entry in entries:
-        lesson = lessons.get(entry.lesson_id)
-        if lesson is not None:
-            by_teacher_day.setdefault(
-                (lesson.teacher_id, entry.weekday), []
-            ).append(entry)
-
-    for teacher_entries in by_teacher_day.values():
-        teacher_entries.sort(key=lambda item: _minutes(item.start_time))
-
-        for previous, current in zip(teacher_entries, teacher_entries[1:]):
-            if _transition_minutes(
-                db, previous, current, lessons, rooms
-            ) is None:
-                unknown_routes.append({
-                    "previous_entry_id": previous.id,
-                    "current_entry_id": current.id,
-                    "reason": (
-                        "Маршрут отсутствует или времени "
-                        "на переход недостаточно"
-                    ),
-                })
-
+    # Сохраняем исходное расписание для расчёта показателей до оптимизации.
     original_entries = [
         ScheduleItem(
             id=item.id,
@@ -343,10 +319,12 @@ def preview_optimization(db: Session):
         for item in entries
     ]
 
+    # 1. Рассчитываем время переходов до оптимизации.
     before_total = _teacher_transition_total(
         original_entries, lessons, rooms, db
     )
 
+    # 2. Оптимизируем копии расписания.
     _optimize_entries(
         db=db,
         entries=entries,
@@ -357,6 +335,38 @@ def preview_optimization(db: Session):
         groups=groups,
     )
 
+    # 3. Пересчитываем unknown_routes по итоговому расписанию.
+    unknown_routes = []
+    by_teacher_day = {}
+
+    for entry in entries:
+        lesson = lessons.get(entry.lesson_id)
+        if lesson is not None:
+            by_teacher_day.setdefault(
+                (lesson.teacher_id, entry.weekday), []
+            ).append(entry)
+
+    for teacher_entries in by_teacher_day.values():
+        teacher_entries.sort(
+            key=lambda item: _minutes(item.start_time)
+        )
+
+        for previous, current in zip(
+            teacher_entries, teacher_entries[1:]
+        ):
+            if _transition_minutes(
+                db, previous, current, lessons, rooms
+            ) is None:
+                unknown_routes.append({
+                    "previous_entry_id": previous.id,
+                    "current_entry_id": current.id,
+                    "reason": (
+                        "Маршрут отсутствует или времени "
+                        "на переход недостаточно"
+                    ),
+                })
+
+    # 4. Формируем список изменений аудиторий.
     changes = []
 
     for entry in entries:
@@ -378,11 +388,11 @@ def preview_optimization(db: Session):
             "new_room_name": rooms[new_room_id].name,
         })
 
+    # 5. Рассчитываем время переходов после оптимизации.
     after_total = _teacher_transition_total(
         entries, lessons, rooms, db
     )
 
-    
     time_saved = (
         max(0, before_total - after_total)
         if before_total is not None and after_total is not None
@@ -398,5 +408,3 @@ def preview_optimization(db: Session):
         "unknown_routes": unknown_routes,
         "saved_to_database": False,
     }
-
-
