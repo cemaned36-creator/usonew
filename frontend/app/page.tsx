@@ -239,7 +239,7 @@ export default function Home() {
               <SidebarItem
                 icon={GraduationCap}
                 label="Преподаватели"
-                href="#"
+                href="/teachers"
               />
 
               <SidebarItem
