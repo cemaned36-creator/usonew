@@ -127,3 +127,9 @@ body {
 [class~="ring-emerald-200"] {
   --tw-ring-color: #b8e3c8 !important;
 }
+
+/* Navigation icons use the URGUPS brand green */
+nav a svg,
+nav button svg {
+  color: #008A43 !important;
+}
