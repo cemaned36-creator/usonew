@@ -71,14 +71,14 @@ export default function TeachersPage() {
               <CalendarDays className="h-5 w-5 text-white" />
             </div>
             <div>
-              <div className="text-[15px] font-semibold tracking-tight">University</div>
-              <div className="text-xs text-slate-400">Schedule Optimizer</div>
+              <div className="text-[15px] font-semibold tracking-tight">УрГУПС</div>
+              <div className="text-xs text-slate-400">Оптимизатор расписания by AlyaIT</div>
             </div>
           </Link>
           <nav className="flex-1 px-3 py-5">
             <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Основное</p>
             <div className="space-y-1">
-              <NavItem href="/" label="Dashboard" icon={<Users className="h-[18px] w-[18px]" />} />
+              <NavItem href="/" label="Главная страница" icon={<Users className="h-[18px] w-[18px]" />} />
               <NavItem href="/weekly-schedule" label="Расписание" icon={<CalendarDays className="h-[18px] w-[18px]" />} />
               <NavItem href="/teachers" label="Преподаватели" active icon={<GraduationCap className="h-[18px] w-[18px]" />} />
               <NavItem href="#" label="Аудитории" icon={<BookOpen className="h-[18px] w-[18px]" />} />
@@ -91,7 +91,7 @@ export default function TeachersPage() {
           </nav>
           <div className="border-t border-slate-200 p-4">
             <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-sm font-medium text-slate-800">University Schedule</div>
+              <div className="text-sm font-medium text-slate-800">УрГУПС Schedule</div>
               <div className="mt-1 text-xs text-slate-400">Управление расписанием</div>
             </div>
           </div>
