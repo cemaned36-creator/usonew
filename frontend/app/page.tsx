@@ -16,6 +16,7 @@ import {
   Settings,
   Sparkles,
   Users,
+  Info,
 } from "lucide-react";
 
 /* =========================
@@ -294,6 +295,11 @@ export default function Home() {
                 icon={Settings}
                 label="Настройки"
                 href="#"
+              />
+              <SidebarItem
+                icon={Info}
+                label="О системе"
+                href="/about-system"
               />
 
             </div>
