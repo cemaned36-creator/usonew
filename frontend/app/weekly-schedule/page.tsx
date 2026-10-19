@@ -557,11 +557,6 @@ export default function WeeklySchedulePage() {
           <div className="space-y-6 px-5 py-6 sm:px-8">
             {isAdmin && (
               <>
-            </>
-            )}
-
-            {isAdmin && (
-              <>
 {/* Импорт отдельных расписаний по типу недели */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
