@@ -460,8 +460,6 @@ export default function WeeklySchedulePage() {
     );
   });
 
-  const totalLessons = filteredEntries.length;
-
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] text-slate-900">
@@ -495,7 +493,7 @@ export default function WeeklySchedulePage() {
               href="/"
               className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
             >
-              <GraduationCap className="h-[18px] w-[18px] text-slate-400" />
+              <GraduationCap className="h-[18px] w-[18px] text-emerald-600" />
               Главная страница
             </Link>
 
@@ -504,7 +502,7 @@ export default function WeeklySchedulePage() {
               aria-current="page"
               className="flex items-center gap-3 rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white"
             >
-              <CalendarDays className="h-[18px] w-[18px] text-white" />
+              <CalendarDays className="h-[18px] w-[18px] text-emerald-600" />
               Расписание
               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
             </Link>
@@ -514,7 +512,7 @@ export default function WeeklySchedulePage() {
                 href="/optimization"
                 className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
               >
-                <Sparkles className="h-[18px] w-[18px] text-slate-400" />
+                <Sparkles className="h-[18px] w-[18px] text-emerald-600" />
                 Оптимизация
               </Link>
             )}
@@ -559,49 +557,7 @@ export default function WeeklySchedulePage() {
           <div className="space-y-6 px-5 py-6 sm:px-8">
             {isAdmin && (
               <>
-{/* Краткая статистика */}
-            <section className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">
-                      Занятий в расписании
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-                      {totalLessons}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      За все дни недели
-                    </p>
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50">
-                    <CalendarDays className="h-5 w-5 text-slate-500" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">
-                      Доступно аудиторий
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-                      {rooms.length}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      В базе университета
-                    </p>
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50">
-                    <DoorOpen className="h-5 w-5 text-slate-500" />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            
-                      </>
+            </>
             )}
 
             {isAdmin && (
