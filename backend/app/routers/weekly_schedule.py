@@ -346,6 +346,7 @@ async def preview_schedule_import(
 @router.post("/import")
 async def import_weekly_schedule(
     file: UploadFile = File(...),
+    week_type: str = Query("both", pattern="^(odd|even|both)$"),
     db: Session = Depends(get_db),
 ):
     """
@@ -377,24 +378,23 @@ async def import_weekly_schedule(
             )
 
         # 3. Загружаем существующее расписание.
-        existing_entries = db.query(WeeklyScheduleEntry).all()
+        # При повторной загрузке заменяем только выбранный тип недели.
+        # Записи другой недели сохраняются.
+        all_existing_entries = db.query(WeeklyScheduleEntry).all()
+        existing_entries = [
+            entry for entry in all_existing_entries
+            if entry.week_type != week_type
+        ]
 
-        existing_lesson_ids = {
-            entry.lesson_id for entry in existing_entries
-        }
-
-        duplicate_lessons = (
-            set(lesson_ids) & existing_lesson_ids
-        )
-
-        if duplicate_lessons:
+        # Не допускаем повторения одной пары занятия в одном файле.
+        schedule_keys = [
+            (row["lesson_id"], row["weekday"], row["start_time"])
+            for row in rows
+        ]
+        if len(schedule_keys) != len(set(schedule_keys)):
             raise HTTPException(
                 status_code=409,
-                detail=(
-                    "Некоторые занятия уже есть в расписании. "
-                    f"ID занятий: {sorted(duplicate_lessons)}. "
-                    "Удалите существующие записи или исправьте Excel."
-                ),
+                detail="В Excel есть повторяющиеся строки одного занятия в тот же день и время.",
             )
 
         # 4. Подготавливаем записи, пока ничего не сохраняем.
@@ -445,7 +445,7 @@ async def import_weekly_schedule(
                 WeeklyScheduleEntry(
                     lesson_id=lesson.id,
                     weekday=weekday,
-                    week_type="both",
+                    week_type=week_type,
                     room_id=room.id,
                     start_time=start_time,
                     end_time=end_time,
@@ -573,7 +573,14 @@ async def import_weekly_schedule(
                     available_minutes=available_minutes,
                 )
 
-        # 7. Сохраняем только после всех проверок.
+        # 7. После успешных проверок заменяем расписание только выбранной недели.
+        if week_type in ("odd", "even"):
+            (
+                db.query(WeeklyScheduleEntry)
+                .filter(WeeklyScheduleEntry.week_type == week_type)
+                .delete(synchronize_session=False)
+            )
+
         db.add_all(planned_entries)
         db.commit()
 
