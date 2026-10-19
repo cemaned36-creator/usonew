@@ -35,13 +35,6 @@ type ScheduleItem = {
 };
 
 type DashboardData = {
-  stats: {
-    lessons: number;
-    teachers: number;
-    rooms: number;
-    problems: number;
-  };
-
   schedule: ScheduleItem[];
 
 };
@@ -353,49 +346,6 @@ export default function Home() {
                 STATISTICS
             ================================================= */}
 
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
-              <StatCard
-                icon={CalendarDays}
-                title="Занятий"
-                value={String(
-                  dashboard.stats.lessons
-                )}
-                description="в базе"
-              />
-
-              <StatCard
-                icon={GraduationCap}
-                title="Преподавателей"
-                value={String(
-                  dashboard.stats.teachers
-                )}
-                description="в системе"
-              />
-
-              <StatCard
-                icon={DoorOpen}
-                title="Аудиторий"
-                value={String(
-                  dashboard.stats.rooms
-                )}
-                description="доступно"
-              />
-
-              <StatCard
-                icon={AlertTriangle}
-                title="Проблем"
-                value={String(
-                  dashboard.stats.problems
-                )}
-                description="требуют внимания"
-                warning={
-                  dashboard.stats.problems > 0
-                }
-              />
-
-            </section>
-
             {/* =================================================
                 SCHEDULE
             ================================================= */}
@@ -622,7 +572,7 @@ function SidebarItem({
     >
       <Icon
         className={`h-[18px] w-[18px] ${
-          active ? "text-white" : "text-slate-400"
+          "text-emerald-600"
         }`}
       />
       <span>{label}</span>
@@ -633,70 +583,3 @@ function SidebarItem({
   );
 }
 
-/* =============================================================
-   STAT CARD
-============================================================= */
-
-function StatCard({
-  icon: Icon,
-  title,
-  value,
-  description,
-  warning = false,
-}: {
-  icon: React.ElementType;
-  title: string;
-  value: string;
-  description: string;
-  warning?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
-
-      <div className="flex items-start justify-between">
-
-        <div>
-
-          <div className="text-sm text-slate-400">
-            {title}
-          </div>
-
-          <div
-            className={`mt-2 text-2xl font-semibold tracking-tight ${
-              warning
-                ? "text-amber-600"
-                : "text-slate-900"
-            }`}
-          >
-            {value}
-          </div>
-
-          <div className="mt-1 text-xs text-slate-400">
-            {description}
-          </div>
-
-        </div>
-
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-            warning
-              ? "bg-amber-50"
-              : "bg-slate-50"
-          }`}
-        >
-
-          <Icon
-            className={`h-5 w-5 ${
-              warning
-                ? "text-amber-500"
-                : "text-slate-500"
-            }`}
-          />
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
