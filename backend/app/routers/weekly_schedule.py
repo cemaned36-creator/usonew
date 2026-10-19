@@ -368,22 +368,14 @@ async def import_weekly_schedule(
 
         rows = preview["rows"]
 
-        # 2. Проверяем повторяющиеся занятия внутри Excel.
-        lesson_ids = [row["lesson_id"] for row in rows]
-
-        if len(lesson_ids) != len(set(lesson_ids)):
-            raise HTTPException(
-                status_code=409,
-                detail="В Excel одно и то же занятие указано несколько раз.",
-            )
-
-        # 3. Загружаем существующее расписание.
-        # При повторной загрузке заменяем только выбранный тип недели.
-        # Записи другой недели сохраняются.
+        # 2. Загружаем записи, которые могут пересекаться с импортируемой неделей.
+        # Нечётная и чётная недели не конфликтуют друг с другом.
+        # Общие записи (both) действуют на обе недели.
         all_existing_entries = db.query(WeeklyScheduleEntry).all()
         existing_entries = [
             entry for entry in all_existing_entries
-            if entry.week_type != week_type
+            if entry.week_type == "both"
+            or (week_type == "both" and entry.week_type in ("odd", "even"))
         ]
 
         # Не допускаем повторения одной пары занятия в одном файле.
