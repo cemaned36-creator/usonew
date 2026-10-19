@@ -664,7 +664,7 @@ export default function WeeklySchedulePage() {
                           const first = startOfWeek(calendarMonth);
                           const date = new Date(first.getFullYear(), first.getMonth(), first.getDate() + index);
                           const inMonth = date.getMonth() === calendarMonth.getMonth();
-                          const isSelected = date.toDateString() >= weekStart.toDateString() && date.toDateString() <= new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6).toDateString();
+                          const isSelected = startOfWeek(date).toDateString() === weekStart.toDateString();
                           return <button key={date.toISOString()} type="button" onClick={() => chooseCalendarDate(date)} className={`rounded-lg py-2 text-sm transition ${isSelected ? "bg-slate-900 text-white" : inMonth ? "text-slate-800 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50"}`}>{date.getDate()}</button>;
                         })}
                       </div>
@@ -787,7 +787,7 @@ export default function WeeklySchedulePage() {
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                         <h3 className="text-sm font-semibold text-slate-800">
-                          {day}
+                          {day} · {formatDayDate(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + index))}
                         </h3>
                         <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                           {dayEntries.length}{" "}
