@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 
-WeekType = Literal["odd", "even", "both"]
+WeekType = Literal["odd", "even"]
 
 
 class WeeklyScheduleCreate(BaseModel):
@@ -13,7 +13,7 @@ class WeeklyScheduleCreate(BaseModel):
     room_id: int
     start_time: time
     end_time: time
-    week_type: WeekType = "both"
+    week_type: WeekType = "odd"
 
     @model_validator(mode="after")
     def validate_time(self):
