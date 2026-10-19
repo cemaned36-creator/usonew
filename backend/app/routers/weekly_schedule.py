@@ -368,12 +368,10 @@ async def import_weekly_schedule(
 
         rows = preview["rows"]
 
-        # Проверяем конфликты только внутри импортируемого типа недели.
-        existing_entries = (
-            db.query(WeeklyScheduleEntry)
-            .filter(WeeklyScheduleEntry.week_type == week_type)
-            .all()
-        )
+        # Импорт полностью заменяет выбранную неделю, поэтому старые записи
+        # этой недели не участвуют в проверке конфликтов. Проверяем новые строки
+        # между собой; расписание другой недели остаётся независимым.
+        existing_entries = []
 
         # Не допускаем повторения одной пары занятия в одном файле.
         schedule_keys = [
