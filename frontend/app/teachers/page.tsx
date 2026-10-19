@@ -204,7 +204,7 @@ export default function TeachersPage() {
 function NavItem({ href, label, icon, active = false }: { href: string; label: string; icon: React.ReactNode; active?: boolean }) {
   return (
     <Link href={href} aria-current={active ? "page" : undefined} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-slate-900 font-medium text-white" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}>
-      <span className={active ? "text-white" : "text-slate-400"}>{icon}</span>
+      <span className={"text-emerald-600"}>{icon}</span>
       <span>{label}</span>
       {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />}
     </Link>
