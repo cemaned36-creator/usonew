@@ -36,7 +36,14 @@ type ScheduleItem = {
 
 type DashboardData = {
   schedule: ScheduleItem[];
+};
 
+type TodayScheduleData = {
+  date: string;
+  academic_year: string;
+  week_number: number;
+  week_type: "odd" | "even";
+  schedule: ScheduleItem[];
 };
 
 /* =========================
@@ -51,6 +58,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
+  const [todayData, setTodayData] = useState<TodayScheduleData | null>(null);
+  const [todayLoading, setTodayLoading] = useState(false);
+  const [todayError, setTodayError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<{ id: number; name: string }[]>([]);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [selectedProfile, setSelectedProfile] = useState<{ role: "admin" | "teacher"; teacherId?: number; name: string } | null>(null);
@@ -121,6 +131,43 @@ export default function Home() {
     loadDashboard();
   }, []);
 
+  useEffect(() => {
+    if (!selectedProfile) return;
+
+    const controller = new AbortController();
+
+    async function loadTodaySchedule() {
+      setTodayLoading(true);
+      setTodayError(null);
+
+      try {
+        const params = selectedProfile.role === "teacher" && selectedProfile.teacherId
+          ? `?teacher_id=${selectedProfile.teacherId}`
+          : "";
+        const response = await fetch(`${API}/dashboard/today${params}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data: TodayScheduleData = await response.json();
+        setTodayData(data);
+      } catch (loadError) {
+        if (loadError instanceof Error && loadError.name === "AbortError") return;
+        console.error("Ошибка загрузки расписания на сегодня:", loadError);
+        setTodayError("Не удалось загрузить расписание на сегодня.");
+        setTodayData(null);
+      } finally {
+        if (!controller.signal.aborted) setTodayLoading(false);
+      }
+    }
+
+    loadTodaySchedule();
+    return () => controller.abort();
+  }, [selectedProfile?.role, selectedProfile?.teacherId]);
+
   /* =========================
      LOADING
   ========================= */
@@ -171,9 +218,7 @@ export default function Home() {
     );
   }
 
-  const visibleSchedule = selectedProfile?.role === "teacher"
-    ? dashboard.schedule.filter((item) => item.teacher === selectedProfile.name)
-    : dashboard.schedule;
+  const visibleSchedule = todayData?.schedule ?? [];
   const matchingTeachers = teachers.filter((teacher) =>
     teacher.name.toLowerCase().includes(teacherSearch.trim().toLowerCase())
   );
@@ -340,16 +385,16 @@ export default function Home() {
 
           {/* CONTENT */}
 
-          <div className="px-5 py-6 sm:px-8">
+          <div className="flex min-h-[calc(100vh-76px)] flex-col px-5 py-5 sm:px-8">
 
             {/* =================================================
                 SCHEDULE
             ================================================= */}
 
-            <section className="mt-6 w-full">
+            <section className="mt-1 flex w-full flex-1 flex-col">
               <Link
                 href={selectedProfile?.role === "teacher" ? `/weekly-schedule?teacherId=${selectedProfile.teacherId}` : "/weekly-schedule"}
-                className="group block overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+                className="group flex min-h-[calc(100vh-150px)] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
               >
 
                 {/* Schedule header */}
@@ -363,7 +408,9 @@ export default function Home() {
                     </h2>
 
                     <p className="mt-1 text-xs text-slate-400">
-                      Занятия и распределение по аудиториям
+                      {todayData
+                        ? `Учебный год ${todayData.academic_year} · ${todayData.week_number}-я неделя · ${todayData.week_type === "odd" ? "нечётная" : "чётная"}`
+                        : "Занятия и распределение по аудиториям"}
                     </p>
 
                   </div>
@@ -377,9 +424,19 @@ export default function Home() {
 
                 {/* Schedule */}
 
-                {visibleSchedule.length === 0 ? (
+                {todayLoading ? (
+                  <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600" />
+                    <p className="mt-3 text-sm text-slate-500">Загружаем расписание...</p>
+                  </div>
+                ) : todayError ? (
+                  <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+                    <AlertTriangle className="h-8 w-8 text-amber-500" />
+                    <p className="mt-3 text-sm text-slate-600">{todayError}</p>
+                  </div>
+                ) : visibleSchedule.length === 0 ? (
 
-                  <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+                  <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
 
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-50">
                       <CalendarDays className="h-6 w-6 text-slate-400" />
@@ -397,7 +454,7 @@ export default function Home() {
 
                 ) : (
 
-                  <div>
+                  <div className="flex-1">
 
                     {visibleSchedule.map(
                       (item, index) => (
