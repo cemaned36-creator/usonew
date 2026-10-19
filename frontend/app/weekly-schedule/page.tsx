@@ -729,6 +729,121 @@ export default function WeeklySchedulePage() {
               </div>
             )}
 
+            {isAdmin && (
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+                  <h2 className="text-base font-semibold text-slate-900">
+                    Добавить занятие вручную
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Добавь отдельное занятие без загрузки Excel-файла.
+                  </p>
+                </div>
+
+                <form onSubmit={addEntry} className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+                  <label className={labelClass}>
+                    Занятие
+                    <select
+                      className={fieldClass}
+                      required
+                      value={lessonId}
+                      onChange={(event) => setLessonId(event.target.value)}
+                    >
+                      <option value="">Выберите занятие</option>
+                      {lessons.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {lessonLabel(item.id)}
+                        </option>
+                      ))}
+                    </select>
+                    {lessons.length === 0 && (
+                      <span className="mt-2 block text-xs text-amber-700">
+                        Сначала создай занятие в разделе занятий.
+                      </span>
+                    )}
+                  </label>
+
+                  <label className={labelClass}>
+                    Аудитория
+                    <select
+                      className={fieldClass}
+                      required
+                      value={roomId}
+                      onChange={(event) => setRoomId(event.target.value)}
+                    >
+                      <option value="">Выберите аудиторию</option>
+                      {rooms.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className={labelClass}>
+                    Неделя
+                    <select
+                      className={fieldClass}
+                      value={entryWeekType}
+                      onChange={(event) =>
+                        setEntryWeekType(event.target.value as "odd" | "even" | "both")
+                      }
+                    >
+                      <option value="both">Обе недели</option>
+                      <option value="odd">Только нечётная</option>
+                      <option value="even">Только чётная</option>
+                    </select>
+                  </label>
+
+                  <label className={labelClass}>
+                    День недели
+                    <select
+                      className={fieldClass}
+                      value={weekday}
+                      onChange={(event) => setWeekday(event.target.value)}
+                    >
+                      {days.map((day, index) => (
+                        <option key={day} value={index}>{day}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className={labelClass}>
+                    Учебная пара
+                    <select
+                      required
+                      value={`${start}-${end}`}
+                      onChange={(event) => {
+                        const [newStart, newEnd] = event.target.value.split("-");
+                        setStart(newStart);
+                        setEnd(newEnd);
+                      }}
+                      className={fieldClass}
+                    >
+                      <option value="">Выберите пару</option>
+                      <option value="08:30-10:05">1-я пара (08:30–10:05)</option>
+                      <option value="10:15-11:50">2-я пара (10:15–11:50)</option>
+                      <option value="12:00-13:35">3-я пара (12:00–13:35)</option>
+                      <option value="14:30-16:05">4-я пара (14:30–16:05)</option>
+                      <option value="16:15-17:50">5-я пара (16:15–17:50)</option>
+                      <option value="18:00-19:35">6-я пара (18:00–19:35)</option>
+                    </select>
+                  </label>
+
+                  <div className="sm:col-span-2">
+                    <button
+                      type="submit"
+                      disabled={saving || !lessons.length || !rooms.length}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {saving ? "Добавление..." : "Добавить занятие"}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
+
             {/* Расписание по дням */}
             <section>
               <div className="mb-4">
