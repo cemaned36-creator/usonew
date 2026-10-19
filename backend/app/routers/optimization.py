@@ -31,14 +31,18 @@ class OptimizationChange(BaseModel):
 
 class OptimizationApplyRequest(BaseModel):
     changes: list[OptimizationChange]
+    week_type: str = "odd"
 
 
 @router.get("/preview")
 def optimization_preview(
+    week_type: str = "odd",
     db: Session = Depends(get_db),
 ):
     try:
-        return preview_optimization(db)
+        if week_type not in {"odd", "even"}:
+            raise HTTPException(status_code=422, detail="week_type должен быть odd или even")
+        return preview_optimization(db, week_type=week_type)
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -62,7 +66,9 @@ def apply_optimization(
 
         # Повторно строим план на актуальных данных. Это защищает от
         # сохранения устаревшего или вручную изменённого preview.
-        current_preview = preview_optimization(db)
+        if payload.week_type not in {"odd", "even"}:
+            raise HTTPException(status_code=422, detail="week_type должен быть odd или even")
+        current_preview = preview_optimization(db, week_type=payload.week_type)
         expected = {
             item["entry_id"]: item
             for item in current_preview["changes"]
@@ -100,6 +106,7 @@ def apply_optimization(
 
         db_entries = (
             db.query(WeeklyScheduleEntry)
+            .filter(WeeklyScheduleEntry.week_type == payload.week_type)
             .order_by(
                 WeeklyScheduleEntry.weekday,
                 WeeklyScheduleEntry.start_time,
