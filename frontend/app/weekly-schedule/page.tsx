@@ -624,7 +624,7 @@ export default function WeeklySchedulePage() {
                   >
                     {importingWeek === item.type
                       ? "Импорт..."
-                      : `Импортировать ${item.preview?.ready_rows ?? ""} занятий`}
+                      : `Импортировать ${item.preview?.ready_rows ?? ""} занятия`}
                   </button>
                 </div>
 
