@@ -43,6 +43,8 @@ def optimization_preview(
         if week_type not in {"odd", "even"}:
             raise HTTPException(status_code=422, detail="week_type должен быть odd или even")
         return preview_optimization(db, week_type=week_type)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
