@@ -614,108 +614,7 @@ export default function WeeklySchedulePage() {
           </header>
 
           <div className="space-y-6 px-5 py-6 sm:px-8">
-            {isAdmin && (
-              <>
-{/* Импорт отдельных расписаний по типу недели */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
-            <h2 className="text-base font-semibold text-slate-900">
-              Импорт расписания из Excel
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Для каждого файла нужен лист «Данные для импорта» и столбцы weekday, group, start_time, end_time, subject, teacher, room.
-              При импорте заменяются записи выбранной недели и старые общие записи «обе недели». Расписание противоположной недели сохраняется.
-            </p>
-          </div>
 
-          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
-            {([
-              {
-                type: "odd" as const,
-                title: "Нечётная неделя",
-                file: oddImportFile,
-                preview: oddImportPreview,
-                inputId: "weekly-schedule-import-odd",
-                setFile: setOddImportFile,
-              },
-              {
-                type: "even" as const,
-                title: "Чётная неделя",
-                file: evenImportFile,
-                preview: evenImportPreview,
-                inputId: "weekly-schedule-import-even",
-                setFile: setEvenImportFile,
-              },
-            ]).map((item) => (
-              <div key={item.type} className="space-y-4 rounded-xl border border-slate-200 p-4">
-                <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
-                <label className={labelClass}>
-                  Excel-файл (.xlsx)
-                  <input
-                    id={item.inputId}
-                    type="file"
-                    accept=".xlsx"
-                    className={fieldClass}
-                    onChange={(event) => {
-                      item.setFile(event.target.files?.[0] ?? null);
-                      if (item.type === "odd") setOddImportPreview(null);
-                      else setEvenImportPreview(null);
-                      setMessage("");
-                    }}
-                  />
-                </label>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => previewImport(item.type)}
-                    disabled={!item.file || previewingWeek !== null || importingWeek !== null}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {previewingWeek === item.type ? "Проверка..." : "Проверить файл"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => importSchedule(item.type)}
-                    disabled={!item.file || !item.preview?.can_import || importingWeek !== null || previewingWeek !== null}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {importingWeek === item.type
-                      ? "Импорт..."
-                      : `Импортировать ${item.preview?.ready_rows ?? ""} занятия`}
-                  </button>
-                </div>
-
-                {item.preview && (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-sm font-medium text-slate-800">Результат проверки</p>
-                    <div className="mt-2 flex flex-wrap gap-4 text-sm">
-                      <span>Всего строк: {item.preview.total_rows}</span>
-                      <span className="text-emerald-700">Готово: {item.preview.ready_rows}</span>
-                      <span className="text-red-700">Ошибок: {item.preview.needs_mapping}</span>
-                    </div>
-                    {item.preview.needs_mapping > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {item.preview.rows
-                          .filter((row: any) => row.status !== "ready")
-                          .slice(0, 5)
-                          .map((row: any) => (
-                            <div key={row.excel_row} className="text-xs text-red-700">
-                              Строка {row.excel_row}: {row.issues.join("; ")}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-                          </>
-            )}
 
             {/* Сообщения API */}
             {isAdmin && message && (
@@ -739,118 +638,7 @@ export default function WeeklySchedulePage() {
               </div>
             )}
 
-            {isAdmin && (
-              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <button type="button" onClick={() => setManualFormOpen((open) => !open)} aria-expanded={manualFormOpen} className="flex w-full items-center justify-between px-5 py-4 text-left sm:px-6">
-                  <span>
-                    <span className="block text-base font-semibold text-slate-900">Добавить занятие вручную</span>
-                    <span className="mt-1 block text-xs text-slate-500">Добавь отдельное занятие без загрузки Excel-файла.</span>
-                  </span>
-                  <Plus className={`h-5 w-5 transition-transform ${manualFormOpen ? "rotate-45" : ""}`} />
-                </button>
 
-                {manualFormOpen && <form onSubmit={addEntry} className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
-                  <label className={labelClass}>
-                    Занятие
-                    <select
-                      className={fieldClass}
-                      required
-                      value={lessonId}
-                      onChange={(event) => setLessonId(event.target.value)}
-                    >
-                      <option value="">Выберите занятие</option>
-                      {lessons.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {lessonLabel(item.id)}
-                        </option>
-                      ))}
-                    </select>
-                    {lessons.length === 0 && (
-                      <span className="mt-2 block text-xs text-amber-700">
-                        Сначала создай занятие в разделе занятий.
-                      </span>
-                    )}
-                  </label>
-
-                  <label className={labelClass}>
-                    Аудитория
-                    <select
-                      className={fieldClass}
-                      required
-                      value={roomId}
-                      onChange={(event) => setRoomId(event.target.value)}
-                    >
-                      <option value="">Выберите аудиторию</option>
-                      {rooms.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className={labelClass}>
-                    Неделя
-                    <select
-                      className={fieldClass}
-                      value={entryWeekType}
-                      onChange={(event) =>
-                        setEntryWeekType(event.target.value as "odd" | "even")
-                      }
-                    >
-                      <option value="odd">Только нечётная</option>
-                      <option value="even">Только чётная</option>
-                    </select>
-                  </label>
-
-                  <label className={labelClass}>
-                    День недели
-                    <select
-                      className={fieldClass}
-                      value={weekday}
-                      onChange={(event) => setWeekday(event.target.value)}
-                    >
-                      {days.map((day, index) => (
-                        <option key={day} value={index}>{day}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className={labelClass}>
-                    Учебная пара
-                    <select
-                      required
-                      value={`${start}-${end}`}
-                      onChange={(event) => {
-                        const [newStart, newEnd] = event.target.value.split("-");
-                        setStart(newStart);
-                        setEnd(newEnd);
-                      }}
-                      className={fieldClass}
-                    >
-                      <option value="">Выберите пару</option>
-                      <option value="08:30-10:05">1-я пара (08:30–10:05)</option>
-                      <option value="10:15-11:50">2-я пара (10:15–11:50)</option>
-                      <option value="12:00-13:35">3-я пара (12:00–13:35)</option>
-                      <option value="14:30-16:05">4-я пара (14:30–16:05)</option>
-                      <option value="16:15-17:50">5-я пара (16:15–17:50)</option>
-                      <option value="18:00-19:35">6-я пара (18:00–19:35)</option>
-                    </select>
-                  </label>
-
-                  <div className="sm:col-span-2">
-                    <button
-                      type="submit"
-                      disabled={saving || !lessons.length || !rooms.length}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Plus className="h-4 w-4" />
-                      {saving ? "Добавление..." : "Добавить занятие"}
-                    </button>
-                  </div>
-                </form>}
-              </section>
-            )}
 
             {/* Расписание по дням */}
             <section>
@@ -1108,6 +896,221 @@ export default function WeeklySchedulePage() {
                 })}
               </div>
             </section>
+
+
+
+            {isAdmin && (
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <button type="button" onClick={() => setManualFormOpen((open) => !open)} aria-expanded={manualFormOpen} className="flex w-full items-center justify-between px-5 py-4 text-left sm:px-6">
+                  <span>
+                    <span className="block text-base font-semibold text-slate-900">Добавить занятие вручную</span>
+                    <span className="mt-1 block text-xs text-slate-500">Добавь отдельное занятие без загрузки Excel-файла.</span>
+                  </span>
+                  <Plus className={`h-5 w-5 transition-transform ${manualFormOpen ? "rotate-45" : ""}`} />
+                </button>
+
+                {manualFormOpen && <form onSubmit={addEntry} className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+                  <label className={labelClass}>
+                    Занятие
+                    <select
+                      className={fieldClass}
+                      required
+                      value={lessonId}
+                      onChange={(event) => setLessonId(event.target.value)}
+                    >
+                      <option value="">Выберите занятие</option>
+                      {lessons.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {lessonLabel(item.id)}
+                        </option>
+                      ))}
+                    </select>
+                    {lessons.length === 0 && (
+                      <span className="mt-2 block text-xs text-amber-700">
+                        Сначала создай занятие в разделе занятий.
+                      </span>
+                    )}
+                  </label>
+
+                  <label className={labelClass}>
+                    Аудитория
+                    <select
+                      className={fieldClass}
+                      required
+                      value={roomId}
+                      onChange={(event) => setRoomId(event.target.value)}
+                    >
+                      <option value="">Выберите аудиторию</option>
+                      {rooms.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className={labelClass}>
+                    Неделя
+                    <select
+                      className={fieldClass}
+                      value={entryWeekType}
+                      onChange={(event) =>
+                        setEntryWeekType(event.target.value as "odd" | "even")
+                      }
+                    >
+                      <option value="odd">Только нечётная</option>
+                      <option value="even">Только чётная</option>
+                    </select>
+                  </label>
+
+                  <label className={labelClass}>
+                    День недели
+                    <select
+                      className={fieldClass}
+                      value={weekday}
+                      onChange={(event) => setWeekday(event.target.value)}
+                    >
+                      {days.map((day, index) => (
+                        <option key={day} value={index}>{day}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className={labelClass}>
+                    Учебная пара
+                    <select
+                      required
+                      value={`${start}-${end}`}
+                      onChange={(event) => {
+                        const [newStart, newEnd] = event.target.value.split("-");
+                        setStart(newStart);
+                        setEnd(newEnd);
+                      }}
+                      className={fieldClass}
+                    >
+                      <option value="">Выберите пару</option>
+                      <option value="08:30-10:05">1-я пара (08:30–10:05)</option>
+                      <option value="10:15-11:50">2-я пара (10:15–11:50)</option>
+                      <option value="12:00-13:35">3-я пара (12:00–13:35)</option>
+                      <option value="14:30-16:05">4-я пара (14:30–16:05)</option>
+                      <option value="16:15-17:50">5-я пара (16:15–17:50)</option>
+                      <option value="18:00-19:35">6-я пара (18:00–19:35)</option>
+                    </select>
+                  </label>
+
+                  <div className="sm:col-span-2">
+                    <button
+                      type="submit"
+                      disabled={saving || !lessons.length || !rooms.length}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {saving ? "Добавление..." : "Добавить занятие"}
+                    </button>
+                  </div>
+                </form>}
+              </section>
+            )}
+
+{/* Импорт отдельных расписаний по типу недели */}
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <h2 className="text-base font-semibold text-slate-900">
+              Импорт расписания из Excel
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Для каждого файла нужен лист «Данные для импорта» и столбцы weekday, group, start_time, end_time, subject, teacher, room.
+              При импорте заменяются записи выбранной недели и старые общие записи «обе недели». Расписание противоположной недели сохраняется.
+            </p>
+          </div>
+
+          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+            {([
+              {
+                type: "odd" as const,
+                title: "Нечётная неделя",
+                file: oddImportFile,
+                preview: oddImportPreview,
+                inputId: "weekly-schedule-import-odd",
+                setFile: setOddImportFile,
+              },
+              {
+                type: "even" as const,
+                title: "Чётная неделя",
+                file: evenImportFile,
+                preview: evenImportPreview,
+                inputId: "weekly-schedule-import-even",
+                setFile: setEvenImportFile,
+              },
+            ]).map((item) => (
+              <div key={item.type} className="space-y-4 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
+                <label className={labelClass}>
+                  Excel-файл (.xlsx)
+                  <input
+                    id={item.inputId}
+                    type="file"
+                    accept=".xlsx"
+                    className={fieldClass}
+                    onChange={(event) => {
+                      item.setFile(event.target.files?.[0] ?? null);
+                      if (item.type === "odd") setOddImportPreview(null);
+                      else setEvenImportPreview(null);
+                      setMessage("");
+                    }}
+                  />
+                </label>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => previewImport(item.type)}
+                    disabled={!item.file || previewingWeek !== null || importingWeek !== null}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {previewingWeek === item.type ? "Проверка..." : "Проверить файл"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => importSchedule(item.type)}
+                    disabled={!item.file || !item.preview?.can_import || importingWeek !== null || previewingWeek !== null}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {importingWeek === item.type
+                      ? "Импорт..."
+                      : `Импортировать ${item.preview?.ready_rows ?? ""} занятия`}
+                  </button>
+                </div>
+
+                {item.preview && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-medium text-slate-800">Результат проверки</p>
+                    <div className="mt-2 flex flex-wrap gap-4 text-sm">
+                      <span>Всего строк: {item.preview.total_rows}</span>
+                      <span className="text-emerald-700">Готово: {item.preview.ready_rows}</span>
+                      <span className="text-red-700">Ошибок: {item.preview.needs_mapping}</span>
+                    </div>
+                    {item.preview.needs_mapping > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {item.preview.rows
+                          .filter((row: any) => row.status !== "ready")
+                          .slice(0, 5)
+                          .map((row: any) => (
+                            <div key={row.excel_row} className="text-xs text-red-700">
+                              Строка {row.excel_row}: {row.issues.join("; ")}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+
 
             {isAdmin && <section className="overflow-hidden rounded-2xl border border-red-200 bg-white">
               <div className="border-b border-red-100 px-5 py-4 sm:px-6">
