@@ -642,17 +642,13 @@ export default function WeeklySchedulePage() {
 
             {/* Расписание по дням */}
             <section>
-              <div className="mb-4">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Неделя с {formatDayDate(weekStart)} — {formatDayDate(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6))}</p>
-                    <p className="mt-1 text-xs text-slate-500">Отображается {selectedWeekType === "odd" ? "нечётная" : "чётная"} неделя</p>
-                  </div>
-                  <div className="relative">
-                    <button type="button" onClick={() => setCalendarOpen((open) => !open)} aria-expanded={calendarOpen} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
-                      <CalendarDays className="h-4 w-4" /> Выбрать неделю
+              <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="relative shrink-0">
+                    <button type="button" onClick={() => setCalendarOpen((open) => !open)} aria-expanded={calendarOpen} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50">
+                      <CalendarDays className="h-4 w-4" /> Выбор недели
                     </button>
-                    {calendarOpen && <div className="absolute right-0 z-30 mt-2 w-[min(340px,calc(100vw-3rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                    {calendarOpen && <div className="absolute left-0 z-30 mt-2 w-[min(340px,calc(100vw-3rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
                       <div className="mb-3 flex items-center justify-between gap-2">
                         <button type="button" aria-label="Предыдущий месяц" onClick={() => setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-lg p-2 hover:bg-slate-100"><ChevronLeft className="h-4 w-4" /></button>
                         <p className="text-sm font-semibold capitalize">{formatMonth(calendarMonth)}</p>
@@ -671,39 +667,8 @@ export default function WeeklySchedulePage() {
                       <p className="mt-3 text-xs text-slate-500">Выберите любой день нужной недели.</p>
                     </div>}
                   </div>
-                </div>
-                {isAdmin && <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
-                  <label
-                    htmlFor="teacher-filter"
-                    className={labelClass}
-                  >
-                    Расписание преподавателя
-                  </label>
-
-                  <select
-                    id="teacher-filter"
-                    value={selectedTeacherId}
-                    onChange={(event) =>
-                      setSelectedTeacherId(event.target.value)
-                    }
-                    className={fieldClass}
-                  >
-                    <option value="">Все преподаватели</option>
-
-                    {teachers.map((teacher) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="relative mb-4 rounded-2xl border border-slate-200 bg-white p-5">
-                    <label
-                      htmlFor="teacher-search"
-                      className={`${labelClass} block`}
-                    >
-                      Поиск преподавателя
-                    </label>
-
+                  {isAdmin && <div className="relative min-w-0 flex-1 sm:max-w-md">
+                    <label htmlFor="teacher-search" className="sr-only">Поиск преподавателя</label>
                     <input
                       id="teacher-search"
                       type="text"
@@ -717,13 +682,12 @@ export default function WeeklySchedulePage() {
                       onBlur={() => {
                         setTimeout(() => setShowTeacherSuggestions(false), 150);
                       }}
-                      placeholder="Введите имя преподавателя..."
+                      placeholder="Поиск преподавателя..."
                       autoComplete="off"
-                      className={fieldClass}
+                      className="block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
                     />
-
                     {showTeacherSuggestions && teacherSearch.trim() !== "" && (
-                      <div className="absolute left-5 right-5 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                      <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                         {filteredTeachers.length > 0 ? (
                           filteredTeachers.map((teacher) => (
                             <button
@@ -741,13 +705,10 @@ export default function WeeklySchedulePage() {
                             </button>
                           ))
                         ) : (
-                          <p className="px-4 py-3 text-sm text-slate-500">
-                            Преподаватели не найдены
-                          </p>
+                          <p className="px-4 py-3 text-sm text-slate-500">Преподаватели не найдены</p>
                         )}
                       </div>
                     )}
-
                     {selectedTeacherId && (
                       <button
                         type="button"
@@ -756,20 +717,18 @@ export default function WeeklySchedulePage() {
                           setTeacherSearch("");
                           setShowTeacherSuggestions(false);
                         }}
-                        className="mt-3 text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        Показать всех преподавателей
-                      </button>
+                        className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+                      >Показать всех преподавателей</button>
                     )}
-                  </div>
-
-                </div>}
-                <h2 className="text-base font-semibold text-slate-900">
-                  Занятия по дням недели
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  Занятия отсортированы по времени начала
-                </p>
+                  </div>}
+                </div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                  <h2 className="text-base font-semibold text-slate-900">Занятия по дням недели</h2>
+                  <span className="text-xs text-slate-500">Неделя с {formatDayDate(weekStart)} по {formatDayDate(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6))} · {selectedWeekType === "odd" ? "нечётная" : "чётная"} неделя</span>
+                </div>
+              </div>
+              <div className="hidden">
+                <p className="text-xs text-slate-400">Занятия отсортированы по времени начала</p>
               </div>
 
               <div className="space-y-4">
