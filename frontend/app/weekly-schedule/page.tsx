@@ -727,10 +727,6 @@ export default function WeeklySchedulePage() {
                   <span className="text-xs text-slate-500">Неделя с {formatDayDate(weekStart)} по {formatDayDate(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6))} · {selectedWeekType === "odd" ? "нечётная" : "чётная"} неделя</span>
                 </div>
               </div>
-              <div className="hidden">
-                <p className="text-xs text-slate-400">Занятия отсортированы по времени начала</p>
-              </div>
-
               <div className="space-y-4">
                 {days.map((day, index) => {
                   const dayEntries = filteredEntries
