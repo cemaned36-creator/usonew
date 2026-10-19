@@ -13,6 +13,7 @@ import {
   Search,
   Sparkles,
   Users,
+  Info,
 } from "lucide-react";
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
@@ -97,6 +98,7 @@ export default function TeachersPage() {
             <p className="mb-3 mt-8 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Система</p>
             <div className="space-y-1">
               <NavItem href="#" label="Настройки" icon={<Users className="h-[18px] w-[18px]" />} />
+              <NavItem href="/about-system" label="О системе" icon={<Info className="h-[18px] w-[18px]" />} />
             </div>
           </nav>
           <div className="border-t border-slate-200 p-4">
