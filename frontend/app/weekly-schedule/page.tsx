@@ -8,6 +8,8 @@ import {
   AlertCircle,
   ArrowLeft,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Clock3,
   DoorOpen,
@@ -56,6 +58,29 @@ type Lesson = {
 
 type MessageType = "success" | "error" | "info";
 
+function startOfWeek(date: Date) {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  result.setDate(result.getDate() - ((result.getDay() + 6) % 7));
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+function getWeekType(date: Date): "odd" | "even" {
+  const value = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  value.setUTCDate(value.getUTCDate() + 4 - (value.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
+  const weekNumber = Math.ceil((((value.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return weekNumber % 2 === 0 ? "even" : "odd";
+}
+
+function formatDayDate(date: Date) {
+  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(date);
+}
+
+function formatMonth(date: Date) {
+  return new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(date);
+}
+
 const fieldClass =
   "mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10";
 
@@ -99,7 +124,16 @@ export default function WeeklySchedulePage() {
   const [lessonId, setLessonId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [weekday, setWeekday] = useState("0");
-  const [selectedWeekType, setSelectedWeekType] = useState<"odd" | "even">("odd");
+  const [selectedWeekType, setSelectedWeekType] = useState<"odd" | "even">(() => getWeekType(new Date()));
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [manualFormOpen, setManualFormOpen] = useState(false);
+  const [bulkDeleteType, setBulkDeleteType] = useState<"odd" | "even" | "both">("both");
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [entryWeekType, setEntryWeekType] = useState<"odd" | "even">("odd");
   const [start, setStart] = useState("08:30");
   const [end, setEnd] = useState("10:00");
@@ -141,6 +175,39 @@ export default function WeeklySchedulePage() {
     ].join(" — ");
   }
 
+  async function chooseCalendarDate(date: Date) {
+    const nextStart = startOfWeek(date);
+    const nextType = getWeekType(date);
+    setWeekStart(nextStart);
+    setSelectedWeekType(nextType);
+    setCalendarOpen(false);
+    setLoading(true);
+    try {
+      await loadSchedule(nextType);
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Не удалось загрузить расписание", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteScheduleBulk() {
+    const weekLabel = bulkDeleteType === "both" ? "обеих недель" : bulkDeleteType === "odd" ? "нечётной недели" : "чётной недели";
+    if (!window.confirm(`Удалить все занятия для ${weekLabel}? Это действие нельзя отменить.`)) return;
+    setBulkDeleting(true);
+    try {
+      const response = await fetch(`${API}/weekly-schedule/bulk?week_type=${bulkDeleteType}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail ?? "Не удалось очистить расписание");
+      showMessage(`Удалено занятий: ${data.deleted_count ?? 0}.`, "success");
+      await loadSchedule(selectedWeekType);
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Ошибка удаления расписания", "error");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   async function loadSchedule(weekType: "odd" | "even" = selectedWeekType) {
     const response = await fetch(`${API}/weekly-schedule/?week_type=${weekType}`);
 
@@ -176,7 +243,7 @@ export default function WeeklySchedulePage() {
     async function loadData() {
       try {
         const endpoints = [
-          "/weekly-schedule/?week_type=odd",
+          `/weekly-schedule/?week_type=${getWeekType(new Date())}`,
           "/lessons/",
           "/rooms/",
           "/teachers/",
@@ -674,16 +741,15 @@ export default function WeeklySchedulePage() {
 
             {isAdmin && (
               <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
-                  <h2 className="text-base font-semibold text-slate-900">
-                    Добавить занятие вручную
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Добавь отдельное занятие без загрузки Excel-файла.
-                  </p>
-                </div>
+                <button type="button" onClick={() => setManualFormOpen((open) => !open)} aria-expanded={manualFormOpen} className="flex w-full items-center justify-between px-5 py-4 text-left sm:px-6">
+                  <span>
+                    <span className="block text-base font-semibold text-slate-900">Добавить занятие вручную</span>
+                    <span className="mt-1 block text-xs text-slate-500">Добавь отдельное занятие без загрузки Excel-файла.</span>
+                  </span>
+                  <Plus className={`h-5 w-5 transition-transform ${manualFormOpen ? "rotate-45" : ""}`} />
+                </button>
 
-                <form onSubmit={addEntry} className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+                {manualFormOpen && <form onSubmit={addEntry} className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
                   <label className={labelClass}>
                     Занятие
                     <select
@@ -782,40 +848,41 @@ export default function WeeklySchedulePage() {
                       {saving ? "Добавление..." : "Добавить занятие"}
                     </button>
                   </div>
-                </form>
+                </form>}
               </section>
             )}
 
             {/* Расписание по дням */}
             <section>
               <div className="mb-4">
-                <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
-                  <label htmlFor="week-type-filter" className={labelClass}>
-                    Отображаемое расписание
-                  </label>
-                  <select
-                    id="week-type-filter"
-                    value={selectedWeekType}
-                    onChange={async (event) => {
-                      const nextWeekType = event.target.value as "odd" | "even";
-                      setSelectedWeekType(nextWeekType);
-                      setLoading(true);
-                      try {
-                        await loadSchedule(nextWeekType);
-                      } catch (error) {
-                        showMessage(error instanceof Error ? error.message : "Не удалось загрузить расписание", "error");
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    className={fieldClass}
-                  >
-                    <option value="odd">Нечётная неделя</option>
-                    <option value="even">Чётная неделя</option>
-                  </select>
-                  <p className="mt-2 text-xs text-slate-500">
-                    Выбери расписание для нечётной или чётной недели.
-                  </p>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Неделя с {formatDayDate(weekStart)} — {formatDayDate(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6))}</p>
+                    <p className="mt-1 text-xs text-slate-500">Отображается {selectedWeekType === "odd" ? "нечётная" : "чётная"} неделя</p>
+                  </div>
+                  <div className="relative">
+                    <button type="button" onClick={() => setCalendarOpen((open) => !open)} aria-expanded={calendarOpen} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
+                      <CalendarDays className="h-4 w-4" /> Выбрать неделю
+                    </button>
+                    {calendarOpen && <div className="absolute right-0 z-30 mt-2 w-[min(340px,calc(100vw-3rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <button type="button" aria-label="Предыдущий месяц" onClick={() => setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-lg p-2 hover:bg-slate-100"><ChevronLeft className="h-4 w-4" /></button>
+                        <p className="text-sm font-semibold capitalize">{formatMonth(calendarMonth)}</p>
+                        <button type="button" aria-label="Следующий месяц" onClick={() => setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="rounded-lg p-2 hover:bg-slate-100"><ChevronRight className="h-4 w-4" /></button>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-500">{["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map((day) => <span key={day} className="py-1">{day}</span>)}</div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: 42 }, (_, index) => {
+                          const first = startOfWeek(calendarMonth);
+                          const date = new Date(first.getFullYear(), first.getMonth(), first.getDate() + index);
+                          const inMonth = date.getMonth() === calendarMonth.getMonth();
+                          const isSelected = date.toDateString() >= weekStart.toDateString() && date.toDateString() <= new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6).toDateString();
+                          return <button key={date.toISOString()} type="button" onClick={() => chooseCalendarDate(date)} className={`rounded-lg py-2 text-sm transition ${isSelected ? "bg-slate-900 text-white" : inMonth ? "text-slate-800 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50"}`}>{date.getDate()}</button>;
+                        })}
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">Выберите любой день нужной недели.</p>
+                    </div>}
+                  </div>
                 </div>
                 {isAdmin && <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
                   <label
@@ -970,7 +1037,7 @@ export default function WeeklySchedulePage() {
                                 className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
                               >
                                 <div className="flex min-w-0 gap-4">
-                                  <div className="flex w-[94px] shrink-0 flex-col justify-center rounded-xl bg-slate-50 px-3 py-2">
+                                  <div className="flex w-[94px] shrink-0 flex-col items-center justify-center rounded-xl bg-slate-50 px-3 py-2 text-center">
                                     <span className="text-sm font-semibold tabular-nums text-slate-800">
                                       {entry.start_time}
                                     </span>
@@ -1041,6 +1108,25 @@ export default function WeeklySchedulePage() {
                 })}
               </div>
             </section>
+
+            {isAdmin && <section className="overflow-hidden rounded-2xl border border-red-200 bg-white">
+              <div className="border-b border-red-100 px-5 py-4 sm:px-6">
+                <h2 className="text-base font-semibold text-red-800">Очистить расписание</h2>
+                <p className="mt-1 text-xs text-slate-500">Удаление затрагивает все занятия выбранного типа недели.</p>
+              </div>
+              <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+                <label className={labelClass}>Какое расписание удалить?
+                  <select value={bulkDeleteType} onChange={(event) => setBulkDeleteType(event.target.value as "odd" | "even" | "both")} className={fieldClass}>
+                    <option value="odd">Только нечётную неделю</option>
+                    <option value="even">Только чётную неделю</option>
+                    <option value="both">Обе недели</option>
+                  </select>
+                </label>
+                <button type="button" onClick={deleteScheduleBulk} disabled={bulkDeleting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50">
+                  <Trash2 className="h-4 w-4" /> {bulkDeleting ? "Удаление..." : "Удалить всё расписание"}
+                </button>
+              </div>
+            </section>}
 
             <footer className="pb-2 text-center text-xs text-slate-400">
               University Schedule Optimizer
