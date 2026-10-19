@@ -346,7 +346,7 @@ async def preview_schedule_import(
 @router.post("/import")
 async def import_weekly_schedule(
     file: UploadFile = File(...),
-    week_type: str = Query("both", pattern="^(odd|even|both)$"),
+    week_type: str = Query("odd", pattern="^(odd|even)$"),
     db: Session = Depends(get_db),
 ):
     """
@@ -368,12 +368,11 @@ async def import_weekly_schedule(
 
         rows = preview["rows"]
 
-        # 2. Загружаем записи, которые могут пересекаться с импортируемой неделей.
-        # Нечётная и чётная недели не конфликтуют друг с другом.
-        # Общие записи (both) действуют на обе недели.
-        all_existing_entries = db.query(WeeklyScheduleEntry).all()
+        # Проверяем конфликты только внутри импортируемого типа недели.
         existing_entries = (
-            all_existing_entries if week_type == "both" else []
+            db.query(WeeklyScheduleEntry)
+            .filter(WeeklyScheduleEntry.week_type == week_type)
+            .all()
         )
 
         # Не допускаем повторения одной пары занятия в одном файле.
@@ -564,17 +563,12 @@ async def import_weekly_schedule(
                 )
 
         # 7. После успешных проверок заменяем расписание только выбранной недели.
-        if week_type in ("odd", "even"):
-            # Отдельные файлы считаются полным расписанием выбранной недели.
-            # Старые общие записи удаляются, иначе они продолжат отображаться
-            # одновременно в нечётной и чётной неделях.
-            (
-                db.query(WeeklyScheduleEntry)
-                .filter(
-                    WeeklyScheduleEntry.week_type.in_(["both", week_type])
-                )
-                .delete(synchronize_session=False)
-            )
+        # Файл полностью заменяет расписание только выбранного типа недели.
+        (
+            db.query(WeeklyScheduleEntry)
+            .filter(WeeklyScheduleEntry.week_type == week_type)
+            .delete(synchronize_session=False)
+        )
 
         db.add_all(planned_entries)
         db.commit()
@@ -667,12 +661,11 @@ def check_transition(
 
 @router.get("/")
 def get_weekly_schedule(
-    week_type: str = Query("both", pattern="^(odd|even|both)$"),
+    week_type: str = Query("odd", pattern="^(odd|even)$"),
     db: Session = Depends(get_db),
 ):
     query = db.query(WeeklyScheduleEntry)
-    if week_type in ("odd", "even"):
-        query = query.filter(WeeklyScheduleEntry.week_type.in_([week_type, "both"]))
+    query = query.filter(WeeklyScheduleEntry.week_type == week_type)
     entries = (
         query.order_by(
             WeeklyScheduleEntry.weekday,
@@ -743,10 +736,9 @@ def assign_lesson(
         WeeklyScheduleEntry.lesson_id == data.lesson_id,
         WeeklyScheduleEntry.weekday == data.weekday,
     )
-    if data.week_type in ("odd", "even"):
-        existing_query = existing_query.filter(
-            WeeklyScheduleEntry.week_type.in_([data.week_type, "both"])
-        )
+    existing_query = existing_query.filter(
+        WeeklyScheduleEntry.week_type == data.week_type
+    )
     existing = existing_query.first()
 
     if existing:
@@ -759,10 +751,9 @@ def assign_lesson(
     entries_query = db.query(WeeklyScheduleEntry).filter(
         WeeklyScheduleEntry.weekday == data.weekday
     )
-    if data.week_type in ("odd", "even"):
-        entries_query = entries_query.filter(
-            WeeklyScheduleEntry.week_type.in_([data.week_type, "both"])
-        )
+    entries_query = entries_query.filter(
+        WeeklyScheduleEntry.week_type == data.week_type
+    )
     entries = entries_query.all()
 
     # Сначала проверяем конфликты расписания.
