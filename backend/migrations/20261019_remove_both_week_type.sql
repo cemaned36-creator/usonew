@@ -35,6 +35,12 @@ END $$;
 ALTER TABLE weekly_schedule_entries
     DROP CONSTRAINT IF EXISTS check_week_type;
 
+-- Добавляем новое ограничение до копирования записей, чтобы ON CONFLICT
+-- корректно обрабатывал уже существующие записи odd/even.
+ALTER TABLE weekly_schedule_entries
+    ADD CONSTRAINT uq_weekly_schedule_lesson_day_week
+    UNIQUE (lesson_id, weekday, week_type);
+
 -- Переносим каждую запись both в обе недели.
 -- Если запись нужного типа уже есть, сохраняем существующую.
 INSERT INTO weekly_schedule_entries
