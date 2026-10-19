@@ -135,14 +135,15 @@ export default function Home() {
     if (!selectedProfile) return;
 
     const controller = new AbortController();
+    const profile = selectedProfile;
 
     async function loadTodaySchedule() {
       setTodayLoading(true);
       setTodayError(null);
 
       try {
-        const params = selectedProfile.role === "teacher" && selectedProfile.teacherId
-          ? `?teacher_id=${selectedProfile.teacherId}`
+        const params = profile.role === "teacher" && profile.teacherId
+          ? `?teacher_id=${profile.teacherId}`
           : "";
         const response = await fetch(`${API}/dashboard/today${params}`, {
           signal: controller.signal,
