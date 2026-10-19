@@ -347,6 +347,9 @@ export default function OptimizationPage() {
             <Link href="/weekly-schedule" className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
               <CalendarDays className="h-[18px] w-[18px] text-emerald-600" />Расписание
             </Link>
+            <Link href="/teachers" className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
+              <GraduationCap className="h-[18px] w-[18px] text-emerald-600" />Преподаватели
+            </Link>
             <Link href="/optimization" aria-current="page" className="flex items-center gap-3 rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white">
               <Sparkles className="h-[18px] w-[18px] text-emerald-600" />Оптимизация
               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
