@@ -16,6 +16,8 @@ import {
   Sparkles,
   Users,
   X,
+  Info,
+  Settings,
 } from "lucide-react";
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
@@ -360,7 +362,12 @@ export default function OptimizationPage() {
               <Sparkles className="h-[18px] w-[18px] text-emerald-600" />Оптимизация
               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
             </Link>
-          </nav>
+                      <p className="mb-3 mt-8 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Система</p>
+            <div className="space-y-1">
+              <Link href="#" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"><Settings className="h-[18px] w-[18px]" />Настройки</Link>
+              <Link href="/about-system" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"><Info className="h-[18px] w-[18px]" />О системе</Link>
+            </div>
+</nav>
           <div className="border-t border-slate-200 p-4">
             <div className="rounded-xl bg-slate-50 p-3">
               <div className="text-sm font-medium text-slate-800">Расписание УрГУПС</div>
