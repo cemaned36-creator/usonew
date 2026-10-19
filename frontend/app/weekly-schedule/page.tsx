@@ -17,6 +17,8 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  Info,
+  Settings,
 } from "lucide-react";
 
 
@@ -591,6 +593,9 @@ export default function WeeklySchedulePage() {
                 Оптимизация
               </Link>
             )}
+            <p className="mb-3 mt-8 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Система</p>
+            <Link href="#" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"><Settings className="h-[18px] w-[18px]" />Настройки</Link>
+            <Link href="/about-system" className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"><Info className="h-[18px] w-[18px]" />О системе</Link>
           </nav>
 
           <div className="border-t border-slate-200 p-4">
