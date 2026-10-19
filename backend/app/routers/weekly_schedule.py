@@ -888,6 +888,24 @@ def assign_lesson(
     }
 
 
+@router.delete("/bulk")
+def delete_weekly_schedule(
+    week_type: str = Query(..., pattern="^(odd|even|both)$"),
+    db: Session = Depends(get_db),
+):
+    """Удаляет записи выбранного типа недели или всё расписание."""
+    query = db.query(WeeklyScheduleEntry)
+    if week_type != "both":
+        query = query.filter(WeeklyScheduleEntry.week_type == week_type)
+    deleted_count = query.delete(synchronize_session=False)
+    db.commit()
+    return {
+        "status": "success",
+        "deleted_count": deleted_count,
+        "week_type": week_type,
+    }
+
+
 @router.delete("/{entry_id}")
 def delete_weekly_entry(
     entry_id: int,
