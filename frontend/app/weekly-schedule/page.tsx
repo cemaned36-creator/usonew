@@ -89,10 +89,12 @@ export default function WeeklySchedulePage() {
     (pair) => pair.start === startTime && pair.end === endTime
   );
 
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importPreview, setImportPreview] = useState<any>(null);
-  const [importing, setImporting] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
+  const [oddImportFile, setOddImportFile] = useState<File | null>(null);
+  const [evenImportFile, setEvenImportFile] = useState<File | null>(null);
+  const [oddImportPreview, setOddImportPreview] = useState<any>(null);
+  const [evenImportPreview, setEvenImportPreview] = useState<any>(null);
+  const [importingWeek, setImportingWeek] = useState<"odd" | "even" | null>(null);
+  const [previewingWeek, setPreviewingWeek] = useState<"odd" | "even" | null>(null);
 
   const [lessonId, setLessonId] = useState("");
   const [roomId, setRoomId] = useState("");
@@ -335,34 +337,34 @@ export default function WeeklySchedulePage() {
     return data;
   }
 
-  async function previewImport() {
+  async function previewImport(weekType: "odd" | "even") {
+    const importFile = weekType === "odd" ? oddImportFile : evenImportFile;
     if (!importFile) {
       showMessage("Сначала выбери Excel-файл (.xlsx)", "error");
       return;
     }
 
-    setPreviewing(true);
-    setImportPreview(null);
+    setPreviewingWeek(weekType);
+    if (weekType === "odd") setOddImportPreview(null);
+    else setEvenImportPreview(null);
     setMessage("");
 
     try {
       const formData = new FormData();
       formData.append("file", importFile);
 
-      const response = await fetch(
-        `${API}/weekly-schedule/import/preview`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(`${API}/weekly-schedule/import/preview`, {
+        method: "POST",
+        body: formData,
+      });
 
       const data = await readApiResponse(response);
-      setImportPreview(data);
+      if (weekType === "odd") setOddImportPreview(data);
+      else setEvenImportPreview(data);
 
       if (data.can_import) {
         showMessage(
-          `Проверка завершена: готово к импорту ${data.ready_rows} занятий.`,
+          `Проверка файла для ${weekType === "odd" ? "нечётной" : "чётной"} недели завершена: готово ${data.ready_rows} занятий.`,
           "success"
         );
       } else {
@@ -377,17 +379,27 @@ export default function WeeklySchedulePage() {
         "error"
       );
     } finally {
-      setPreviewing(false);
+      setPreviewingWeek(null);
     }
   }
 
-  async function importSchedule() {
+  async function importSchedule(weekType: "odd" | "even") {
+    const importFile = weekType === "odd" ? oddImportFile : evenImportFile;
+    const importPreview = weekType === "odd" ? oddImportPreview : evenImportPreview;
+
     if (!importFile || !importPreview?.can_import) {
       showMessage("Сначала выбери и проверь Excel-файл", "error");
       return;
     }
 
-    setImporting(true);
+    const weekLabel = weekType === "odd" ? "нечётной" : "чётной";
+    if (!window.confirm(
+      `Загрузить расписание на ${weekLabel} неделю? Существующие записи этой недели будут заменены. Другая неделя останется без изменений.`
+    )) {
+      return;
+    }
+
+    setImportingWeek(weekType);
     setMessage("");
 
     try {
@@ -395,7 +407,7 @@ export default function WeeklySchedulePage() {
       formData.append("file", importFile);
 
       const response = await fetch(
-        "https://usonew.onrender.com/weekly-schedule/import",
+        `${API}/weekly-schedule/import?week_type=${weekType}`,
         {
           method: "POST",
           body: formData,
@@ -403,22 +415,22 @@ export default function WeeklySchedulePage() {
       );
 
       const data = await readApiResponse(response);
-
       await loadSchedule();
 
-      setImportPreview(null);
-      setImportFile(null);
-
-      const fileInput = document.getElementById(
-        "weekly-schedule-import-file"
-      ) as HTMLInputElement | null;
-
-      if (fileInput) {
-        fileInput.value = "";
+      if (weekType === "odd") {
+        setOddImportPreview(null);
+        setOddImportFile(null);
+        const input = document.getElementById("weekly-schedule-import-odd") as HTMLInputElement | null;
+        if (input) input.value = "";
+      } else {
+        setEvenImportPreview(null);
+        setEvenImportFile(null);
+        const input = document.getElementById("weekly-schedule-import-even") as HTMLInputElement | null;
+        if (input) input.value = "";
       }
 
       showMessage(
-        `Импорт завершён: сохранено занятий — ${data.imported_count}.`,
+        `Импорт на ${weekLabel} неделю завершён: сохранено занятий — ${data.imported_count}.`,
         "success"
       );
     } catch (error) {
@@ -427,10 +439,9 @@ export default function WeeklySchedulePage() {
         "error"
       );
     } finally {
-      setImporting(false);
+      setImportingWeek(null);
     }
   }
-
 
   const isAdmin = profileLoaded && profileRole === "admin";
   const isTeacherView = profileLoaded && profileRole === "teacher";
@@ -595,247 +606,103 @@ export default function WeeklySchedulePage() {
 
             {isAdmin && (
               <>
-{/* Импорт Excel */}
+{/* Импорт отдельных расписаний по типу недели */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
             <h2 className="text-base font-semibold text-slate-900">
               Импорт расписания из Excel
             </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Загрузи файл с листом «Данные для импорта»
+            <p className="mt-1 text-xs text-slate-500">
+              Для каждого файла нужен лист «Данные для импорта» и столбцы weekday, group, start_time, end_time, subject, teacher, room.
+              При повторной загрузке заменяется только расписание выбранной недели.
             </p>
           </div>
 
-          <div className="space-y-4 p-5 sm:p-6">
-            <label className={labelClass}>
-              Excel-файл (.xlsx)
-              <input
-                id="weekly-schedule-import-file"
-                type="file"
-                accept=".xlsx"
-                className={fieldClass}
-                onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
-                  setImportFile(file);
-                  setImportPreview(null);
-                  setMessage("");
-                }}
-              />
-            </label>
+          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+            {([
+              {
+                type: "odd" as const,
+                title: "Нечётная неделя",
+                file: oddImportFile,
+                preview: oddImportPreview,
+                inputId: "weekly-schedule-import-odd",
+                setFile: setOddImportFile,
+              },
+              {
+                type: "even" as const,
+                title: "Чётная неделя",
+                file: evenImportFile,
+                preview: evenImportPreview,
+                inputId: "weekly-schedule-import-even",
+                setFile: setEvenImportFile,
+              },
+            ]).map((item) => (
+              <div key={item.type} className="space-y-4 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
+                <label className={labelClass}>
+                  Excel-файл (.xlsx)
+                  <input
+                    id={item.inputId}
+                    type="file"
+                    accept=".xlsx"
+                    className={fieldClass}
+                    onChange={(event) => {
+                      item.setFile(event.target.files?.[0] ?? null);
+                      if (item.type === "odd") setOddImportPreview(null);
+                      else setEvenImportPreview(null);
+                      setMessage("");
+                    }}
+                  />
+                </label>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={previewImport}
-                disabled={!importFile || previewing || importing}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {previewing ? "Проверка..." : "Проверить файл"}
-              </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => previewImport(item.type)}
+                    disabled={!item.file || previewingWeek !== null || importingWeek !== null}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {previewingWeek === item.type ? "Проверка..." : "Проверить файл"}
+                  </button>
 
-              <button
-                type="button"
-                onClick={importSchedule}
-                disabled={
-                  !importFile ||
-                  !importPreview?.can_import ||
-                  importing ||
-                  previewing
-                }
-                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {importing
-                  ? "Импорт..."
-                  : `Импортировать ${importPreview?.ready_rows ?? ""} занятий`}
-              </button>
-            </div>
-
-            {importPreview && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-800">
-                  Результат проверки
-                </p>
-
-                <div className="mt-2 flex flex-wrap gap-4 text-sm">
-                  <span>
-                    Всего строк: <strong>{importPreview.total_rows}</strong>
-                  </span>
-                  <span className="text-emerald-700">
-                    Готово: <strong>{importPreview.ready_rows}</strong>
-                  </span>
-                  <span className="text-red-700">
-                    Ошибки: <strong>{importPreview.needs_mapping}</strong>
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => importSchedule(item.type)}
+                    disabled={!item.file || !item.preview?.can_import || importingWeek !== null || previewingWeek !== null}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {importingWeek === item.type
+                      ? "Импорт..."
+                      : `Импортировать ${item.preview?.ready_rows ?? ""} занятий`}
+                  </button>
                 </div>
 
-                {importPreview.rows?.some(
-                  (row: any) => row.issues?.length > 0
-                ) && (
-                  <div className="mt-3 space-y-2">
-                    {importPreview.rows.map((row: any) =>
-                      row.issues?.length ? (
-                        <div
-                          key={row.excel_row}
-                          className="text-sm text-red-700"
-                        >
-                          <strong>Строка {row.excel_row}:</strong>{" "}
-                          {row.issues.join("; ")}
-                        </div>
-                      ) : null
+                {item.preview && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-medium text-slate-800">Результат проверки</p>
+                    <div className="mt-2 flex flex-wrap gap-4 text-sm">
+                      <span>Всего строк: {item.preview.total_rows}</span>
+                      <span className="text-emerald-700">Готово: {item.preview.ready_rows}</span>
+                      <span className="text-red-700">Ошибок: {item.preview.needs_mapping}</span>
+                    </div>
+                    {item.preview.needs_mapping > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {item.preview.rows
+                          .filter((row: any) => row.status !== "ready")
+                          .slice(0, 5)
+                          .map((row: any) => (
+                            <div key={row.excel_row} className="text-xs text-red-700">
+                              Строка {row.excel_row}: {row.issues.join("; ")}
+                            </div>
+                          ))}
+                      </div>
                     )}
                   </div>
                 )}
-
-                {importPreview.can_import && (
-                  <p className="mt-3 text-sm font-medium text-emerald-700">
-                    Все строки готовы. Можно импортировать расписание.
-                  </p>
-                )}
               </div>
-            )}
+            ))}
           </div>
         </section>
-
-
-                          </>
-            )}
-
-            {isAdmin && (
-              <>
-{/* Форма добавления */}
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
-                  <Plus className="h-4 w-4 text-slate-700" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900">
-                    Добавить занятие
-                  </h2>
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    Выбери занятие, аудиторию и время
-                  </p>
-                </div>
-              </div>
-
-              <form
-                onSubmit={addEntry}
-                className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6"
-              >
-                <label className={labelClass}>
-                  Занятие
-                  <select
-                    className={fieldClass}
-                    required
-                    value={lessonId}
-                    onChange={(event) => setLessonId(event.target.value)}
-                  >
-                    <option value="">Выберите занятие</option>
-                    {lessons.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {lessonLabel(item.id)}
-                      </option>
-                    ))}
-                  </select>
-                  {lessons.length === 0 && (
-                    <span className="mt-2 block text-xs text-amber-700">
-                      Сначала создай занятие в разделе Lessons.
-                    </span>
-                  )}
-                </label>
-
-                <label className={labelClass}>
-                  Аудитория
-                  <select
-                    className={fieldClass}
-                    required
-                    value={roomId}
-                    onChange={(event) => setRoomId(event.target.value)}
-                  >
-                    <option value="">Выберите аудиторию</option>
-                    {rooms.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                  {rooms.length === 0 && (
-                    <span className="mt-2 block text-xs text-amber-700">
-                      В базе пока нет аудиторий.
-                    </span>
-                  )}
-                </label>
-
-                <label className={labelClass}>
-                  Неделя
-                  <select
-                    className={fieldClass}
-                    value={entryWeekType}
-                    onChange={(event) => setEntryWeekType(event.target.value as "odd" | "even" | "both")}
-                  >
-                    <option value="both">Обе недели</option>
-                    <option value="odd">Только нечётная</option>
-                    <option value="even">Только чётная</option>
-                  </select>
-                </label>
-
-                <label className={labelClass}>
-                  День недели
-                  <select
-                    className={fieldClass}
-                    value={weekday}
-                    onChange={(event) => setWeekday(event.target.value)}
-                  >
-                    {days.map((day, index) => (
-                      <option key={day} value={index}>
-                        {day}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <div>
-                  <label className={labelClass}>
-                    <span className="flex items-center gap-2">
-                      <Clock3 className="h-4 w-4 text-slate-400" />
-                      Учебная пара
-                    </span>
-
-                    <select
-                      required
-                      value={`${start}-${end}`}
-                      onChange={(event) => {
-                        const [newStart, newEnd] = event.target.value.split("-");
-                        setStart(newStart);
-                        setEnd(newEnd);
-                      }}
-                      className={fieldClass}
-                    >
-                      <option value="">Выберите пару</option>
-                      <option value="08:30-10:05">1-я пара (08:30–10:05)</option>
-                      <option value="10:15-11:50">2-я пара (10:15–11:50)</option>
-                      <option value="12:00-13:35">3-я пара (12:00–13:35)</option>
-                      <option value="14:30-16:05">4-я пара (14:30–16:05)</option>
-                      <option value="16:15-17:50">5-я пара (16:15–17:50)</option>
-                      <option value="18:00-19:35">6-я пара (18:00–19:35)</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <button
-                    type="submit"
-                    disabled={
-                      saving || !lessons.length || !rooms.length
-                    }
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {saving ? "Добавление..." : "Добавить занятие"}
-                  </button>
-                </div>
-              </form>
-            </section>
 
                           </>
             )}
