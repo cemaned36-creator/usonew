@@ -342,13 +342,13 @@ export default function OptimizationPage() {
           <nav className="flex-1 px-3 py-5">
             <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Основное</p>
             <Link href="/" className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
-              <GraduationCap className="h-[18px] w-[18px] text-slate-400" />Главная страница
+              <GraduationCap className="h-[18px] w-[18px] text-emerald-600" />Главная страница
             </Link>
             <Link href="/weekly-schedule" className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
-              <CalendarDays className="h-[18px] w-[18px] text-slate-400" />Расписание
+              <CalendarDays className="h-[18px] w-[18px] text-emerald-600" />Расписание
             </Link>
             <Link href="/optimization" aria-current="page" className="flex items-center gap-3 rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white">
-              <Sparkles className="h-[18px] w-[18px]" />Оптимизация
+              <Sparkles className="h-[18px] w-[18px] text-emerald-600" />Оптимизация
               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
             </Link>
           </nav>
