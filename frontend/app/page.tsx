@@ -462,7 +462,7 @@ export default function Home() {
 
                         <div
                           key={item.id}
-                          className={`grid grid-cols-[90px_minmax(220px,1.7fr)_minmax(160px,1fr)_100px_30px] items-center gap-4 px-5 py-4 sm:px-6 ${
+                          className={`grid grid-cols-[90px_minmax(0,1fr)_100px_30px] items-center gap-4 px-5 py-4 sm:px-6 ${
                             index !==
                             visibleSchedule.length - 1
                               ? "border-b border-slate-100"
@@ -488,33 +488,11 @@ export default function Home() {
 
                           <div className="min-w-0">
 
-                            <div className="truncate text-sm font-medium text-slate-800">
-                              {item.subject}
+                            <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-slate-800">
+                              <span className="truncate">{item.subject}</span>
+                              <span aria-hidden="true" className="shrink-0 text-emerald-500">·</span>
+                              <span className="shrink-0">{item.group}</span>
                             </div>
-
-                            <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
-
-                              <span>
-                                {item.teacher}
-                              </span>
-
-                              <span className="h-1 w-1 rounded-full bg-slate-300" />
-
-                              <span>
-                                {item.group}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-                          {/* Room type */}
-
-                          <div>
-
-                            <span className="inline-flex rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-600">
-                              {item.room_type}
-                            </span>
 
                           </div>
 
