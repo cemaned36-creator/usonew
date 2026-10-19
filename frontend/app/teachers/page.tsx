@@ -30,6 +30,21 @@ export default function TeachersPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [profileRole, setProfileRole] = useState<"admin" | "teacher">("admin");
+
+  useEffect(() => {
+    try {
+      const savedProfile = localStorage.getItem("uso-user-profile");
+      if (savedProfile) {
+        const profile = JSON.parse(savedProfile);
+        if (profile?.role === "admin" || profile?.role === "teacher") {
+          setProfileRole(profile.role);
+        }
+      }
+    } catch {
+      localStorage.removeItem("uso-user-profile");
+    }
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -75,7 +90,9 @@ export default function TeachersPage() {
               <NavItem href="/weekly-schedule" label="Расписание" icon={<CalendarDays className="h-[18px] w-[18px]" />} />
               <NavItem href="/teachers" label="Преподаватели" active icon={<GraduationCap className="h-[18px] w-[18px]" />} />
               <NavItem href="#" label="Аудитории" icon={<BookOpen className="h-[18px] w-[18px]" />} />
-              <NavItem href="/optimization" label="Оптимизация" icon={<Sparkles className="h-[18px] w-[18px]" />} />
+              {profileRole === "admin" && (
+                <NavItem href="/optimization" label="Оптимизация" icon={<Sparkles className="h-[18px] w-[18px]" />} />
+              )}
             </div>
             <p className="mb-3 mt-8 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Система</p>
             <div className="space-y-1">
