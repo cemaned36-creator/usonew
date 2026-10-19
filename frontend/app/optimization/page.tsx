@@ -91,6 +91,7 @@ export default function OptimizationPage() {
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
   const [message, setMessage] = useState<Message | null>(null);
   const [teacherAccess, setTeacherAccess] = useState(false);
+  const [selectedWeekType, setSelectedWeekType] = useState("odd");
 
   useEffect(() => {
     try {
@@ -163,7 +164,7 @@ export default function OptimizationPage() {
     setMessage(null);
     setConfirmStep(0);
     try {
-      const response = await fetch(`${API}/optimization/preview`);
+      const response = await fetch(`${API}/optimization/preview?week_type=${selectedWeekType}`);
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
@@ -197,6 +198,7 @@ export default function OptimizationPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          week_type: selectedWeekType,
           changes: result.changes.map((change) => ({
             entry_id: change.entry_id,
             old_room_id: change.old_room_id,
@@ -376,9 +378,16 @@ export default function OptimizationPage() {
 
           <div className="space-y-6 px-4 py-6 sm:px-8">
             <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div><h2 className="text-base font-semibold">Неделя расписания</h2><p className="mt-1 text-sm text-slate-500">Выбери чётность недели — только её занятия будут оптимизированы.</p></div>
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  <button type="button" onClick={() => { setSelectedWeekType("odd"); setResult(null); setMessage(null); }} aria-pressed={selectedWeekType === "odd"} className="rounded-lg px-4 py-2.5 text-sm font-semibold transition">Нечётная</button>
+                  <button type="button" onClick={() => { setSelectedWeekType("even"); setResult(null); setMessage(null); }} aria-pressed={selectedWeekType === "even"} className="rounded-lg px-4 py-2.5 text-sm font-semibold transition">Чётная</button>
+                </div>
+              </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-base font-semibold">Запуск оптимизации</h2>
+                  <h2 className="text-base font-semibold">Запуск оптимизации — {selectedWeekType === "odd" ? "нечётная неделя" : "чётная неделя"}</h2>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
                     Система подберёт подходящие аудитории и сравнит время переходов преподавателей.
                     База данных не изменится, пока ты не подтвердишь результат дважды.
