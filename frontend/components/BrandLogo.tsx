@@ -6,21 +6,21 @@ export default function BrandLogo() {
     <Link
       href="/"
       aria-label="УрГУПС — Оптимизатор расписания by AlyaIT"
-      className="flex h-[76px] items-center gap-3 border-b border-slate-200 px-4"
+      className="flex min-h-[88px] w-full items-center gap-3 overflow-hidden border-b border-slate-200 px-3"
     >
       <Image
         src="/urguups-logo.jpg.jpg"
         alt="Логотип УрГУПС"
-        width={100}
-        height={64}
+        width={116}
+        height={72}
         priority
-        className="h-14 w-[100px] shrink-0 object-contain"
+        className="h-[68px] w-[112px] shrink-0 object-contain"
       />
       <div className="min-w-0">
-        <div className="text-xs font-semibold leading-snug text-slate-900">
+        <div className="text-[11px] font-semibold leading-snug text-slate-900">
           Оптимизатор расписания
         </div>
-        <div className="mt-1 text-[11px] leading-snug text-slate-400">
+        <div className="mt-1 text-[10px] leading-snug text-slate-400">
           by AlyaIT
         </div>
       </div>
