@@ -18,9 +18,8 @@ class WeeklyScheduleEntry(Base):
 
     weekday = Column(Integer, nullable=False)
 
-    # odd — нечётная неделя, even — чётная, both — обе недели.
-    # Старые записи миграция сохраняет как both.
-    week_type = Column(String(8), nullable=False, default="both", server_default="both")
+    # odd — нечётная неделя, even — чётная неделя.
+    week_type = Column(String(8), nullable=False, default="odd", server_default="odd")
 
     room_id = Column(
         Integer,
@@ -45,7 +44,7 @@ class WeeklyScheduleEntry(Base):
             name="check_lesson_time",
         ),
         CheckConstraint(
-            "week_type IN ('odd', 'even', 'both')",
+            "week_type IN ('odd', 'even')",
             name="check_week_type",
         ),
     )
