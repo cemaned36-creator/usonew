@@ -35,6 +35,7 @@ type ScheduleEntry = {
   weekday: number;
   start_time: string;
   end_time: string;
+  week_type?: "odd" | "even" | "both";
   room_id: number;
   room_name: string | null;
   teacher_id?: number | null;
@@ -119,15 +120,18 @@ export default function OptimizationPage() {
     if (failed) throw new Error(`Не удалось загрузить данные: HTTP ${failed.status}`);
     const [scheduleData, lessonData, roomData, teacherData, subjectData, groupData] =
       await Promise.all(responses.map((response) => response.json()));
-    setEntries(scheduleData);
+    setEntries(scheduleData.filter((entry: ScheduleEntry) => entry.week_type === selectedWeekType));
     setLessons(lessonData);
     setRooms(roomData);
     setTeachers(teacherData);
     setSubjects(subjectData);
     setGroups(groupData);
-  }, []);
+  }, [selectedWeekType]);
 
   useEffect(() => {
+    setResult(null);
+    setConfirmStep(0);
+    setLoadingData(true);
     loadData()
       .catch((error) =>
         setMessage({
