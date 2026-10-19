@@ -372,11 +372,9 @@ async def import_weekly_schedule(
         # Нечётная и чётная недели не конфликтуют друг с другом.
         # Общие записи (both) действуют на обе недели.
         all_existing_entries = db.query(WeeklyScheduleEntry).all()
-        existing_entries = [
-            entry for entry in all_existing_entries
-            if entry.week_type == "both"
-            or (week_type == "both" and entry.week_type in ("odd", "even"))
-        ]
+        existing_entries = (
+            all_existing_entries if week_type == "both" else []
+        )
 
         # Не допускаем повторения одной пары занятия в одном файле.
         schedule_keys = [
@@ -567,9 +565,14 @@ async def import_weekly_schedule(
 
         # 7. После успешных проверок заменяем расписание только выбранной недели.
         if week_type in ("odd", "even"):
+            # Отдельные файлы считаются полным расписанием выбранной недели.
+            # Старые общие записи удаляются, иначе они продолжат отображаться
+            # одновременно в нечётной и чётной неделях.
             (
                 db.query(WeeklyScheduleEntry)
-                .filter(WeeklyScheduleEntry.week_type == week_type)
+                .filter(
+                    WeeklyScheduleEntry.week_type.in_(["both", week_type])
+                )
                 .delete(synchronize_session=False)
             )
 
