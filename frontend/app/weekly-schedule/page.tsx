@@ -39,7 +39,7 @@ type Entry = {
   end_time: string;
   room_id: number;
   room_name: string | null;
-  week_type: "odd" | "even" | "both";
+  week_type: "odd" | "even";
 };
 
 type NamedOption = {
@@ -99,8 +99,8 @@ export default function WeeklySchedulePage() {
   const [lessonId, setLessonId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [weekday, setWeekday] = useState("0");
-  const [selectedWeekType, setSelectedWeekType] = useState<"odd" | "even" | "both">("both");
-  const [entryWeekType, setEntryWeekType] = useState<"odd" | "even" | "both">("both");
+  const [selectedWeekType, setSelectedWeekType] = useState<"odd" | "even">("odd");
+  const [entryWeekType, setEntryWeekType] = useState<"odd" | "even">("odd");
   const [start, setStart] = useState("08:30");
   const [end, setEnd] = useState("10:00");
 
@@ -141,7 +141,7 @@ export default function WeeklySchedulePage() {
     ].join(" — ");
   }
 
-  async function loadSchedule(weekType: "odd" | "even" | "both" = selectedWeekType) {
+  async function loadSchedule(weekType: "odd" | "even" = selectedWeekType) {
     const response = await fetch(`${API}/weekly-schedule/?week_type=${weekType}`);
 
     if (!response.ok) {
@@ -176,7 +176,7 @@ export default function WeeklySchedulePage() {
     async function loadData() {
       try {
         const endpoints = [
-          "/weekly-schedule/?week_type=both",
+          "/weekly-schedule/?week_type=odd",
           "/lessons/",
           "/rooms/",
           "/teachers/",
@@ -394,7 +394,7 @@ export default function WeeklySchedulePage() {
 
     const weekLabel = weekType === "odd" ? "нечётной" : "чётной";
     if (!window.confirm(
-      `Загрузить расписание на ${weekLabel} неделю? Старые записи этой недели и общие записи «обе недели» будут заменены. Расписание противоположной недели останется без изменений.`
+      `Загрузить расписание на ${weekLabel} неделю? Все записи выбранной недели будут заменены. Расписание противоположной недели останется без изменений.`
     )) {
       return;
     }
@@ -786,10 +786,9 @@ export default function WeeklySchedulePage() {
                       className={fieldClass}
                       value={entryWeekType}
                       onChange={(event) =>
-                        setEntryWeekType(event.target.value as "odd" | "even" | "both")
+                        setEntryWeekType(event.target.value as "odd" | "even")
                       }
                     >
-                      <option value="both">Обе недели</option>
                       <option value="odd">Только нечётная</option>
                       <option value="even">Только чётная</option>
                     </select>
@@ -855,7 +854,7 @@ export default function WeeklySchedulePage() {
                     id="week-type-filter"
                     value={selectedWeekType}
                     onChange={async (event) => {
-                      const nextWeekType = event.target.value as "odd" | "even" | "both";
+                      const nextWeekType = event.target.value as "odd" | "even";
                       setSelectedWeekType(nextWeekType);
                       setLoading(true);
                       try {
@@ -868,12 +867,11 @@ export default function WeeklySchedulePage() {
                     }}
                     className={fieldClass}
                   >
-                    <option value="both">Все недели</option>
                     <option value="odd">Нечётная неделя</option>
                     <option value="even">Чётная неделя</option>
                   </select>
                   <p className="mt-2 text-xs text-slate-500">
-                    Общие занятия отображаются в обоих вариантах.
+                    Выбери расписание для нечётной или чётной недели.
                   </p>
                 </div>
                 {isAdmin && <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5">
