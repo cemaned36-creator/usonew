@@ -259,14 +259,18 @@ def _optimize_entries(
             entry.room_id = old_room_id
 
 
-def preview_optimization(db: Session):
+def preview_optimization(db: Session, week_type: str = "odd"):
     """
     Формирует предварительный план назначений.
     Изменяет только копии расписания, не ORM-записи.
     """
 
+    if week_type not in {"odd", "even"}:
+        raise ValueError("week_type должен быть odd или even")
+
     db_entries = (
         db.query(WeeklyScheduleEntry)
+        .filter(WeeklyScheduleEntry.week_type == week_type)
         .order_by(
             WeeklyScheduleEntry.weekday,
             WeeklyScheduleEntry.start_time,
