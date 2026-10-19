@@ -366,14 +366,13 @@ export default function OptimizationPage() {
         </aside>
 
         <main className="min-w-0 flex-1">
-          <header className="flex min-h-[76px] items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight">Оптимизация расписания</h1>
-              <p className="mt-1 text-sm text-slate-400">Сравнение текущих аудиторий с предлагаемыми изменениями</p>
+          <header className="relative flex min-h-[88px] items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
+            <div className="flex-1" />
+            <div className="absolute left-1/2 max-w-[58%] -translate-x-1/2 text-center">
+              <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Оптимизация расписания</h1>
+              <p className="mt-1 hidden text-sm text-slate-400 sm:block">Сравнение аудиторий и времени переходов</p>
             </div>
-            <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 sm:flex">
-              <ShieldCheck className="h-4 w-4" />Предварительный просмотр до подтверждения
-            </div>
+            <div className="flex flex-1 justify-end"><div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 xl:flex"><ShieldCheck className="h-4 w-4" />Предварительный просмотр</div></div>
           </header>
 
           <div className="space-y-6 px-4 py-6 sm:px-8">
