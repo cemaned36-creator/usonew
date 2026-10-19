@@ -108,7 +108,7 @@ export default function OptimizationPage() {
   const loadData = useCallback(async () => {
     if (!API) throw new Error("Не задан NEXT_PUBLIC_API_URL для frontend.");
     const paths = [
-      "/weekly-schedule/",
+      `/weekly-schedule/?week_type=${selectedWeekType}`,
       "/lessons/",
       "/rooms/",
       "/teachers/",
@@ -383,9 +383,23 @@ export default function OptimizationPage() {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
               <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div><h2 className="text-base font-semibold">Неделя расписания</h2><p className="mt-1 text-sm text-slate-500">Выбери чётность недели — только её занятия будут оптимизированы.</p></div>
-                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-                  <button type="button" onClick={() => { setSelectedWeekType("odd"); setResult(null); setMessage(null); }} aria-pressed={selectedWeekType === "odd"} className="rounded-lg px-4 py-2.5 text-sm font-semibold transition">Нечётная</button>
-                  <button type="button" onClick={() => { setSelectedWeekType("even"); setResult(null); setMessage(null); }} aria-pressed={selectedWeekType === "even"} className="rounded-lg px-4 py-2.5 text-sm font-semibold transition">Чётная</button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedWeekType("odd"); setResult(null); setMessage(null); }}
+                    aria-pressed={selectedWeekType === "odd"}
+                    className={`min-w-[112px] rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${selectedWeekType === "odd" ? "border-slate-900 bg-slate-900 text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800"}`}
+                  >
+                    Нечётная
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedWeekType("even"); setResult(null); setMessage(null); }}
+                    aria-pressed={selectedWeekType === "even"}
+                    className={`min-w-[112px] rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${selectedWeekType === "even" ? "border-slate-900 bg-slate-900 text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800"}`}
+                  >
+                    Чётная
+                  </button>
                 </div>
               </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
