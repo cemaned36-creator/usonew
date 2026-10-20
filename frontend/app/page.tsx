@@ -569,11 +569,39 @@ export default function Home() {
             </button>
             <div className="mt-5">
               <label htmlFor="teacher-profile-search" className="text-sm font-medium text-slate-700">Преподаватель</label>
-              <input id="teacher-profile-search" value={teacherSearch} onChange={(event) => setTeacherSearch(event.target.value)} placeholder="Начни вводить имя преподавателя..." className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10" />
-              <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-slate-100">
-                {matchingTeachers.length ? matchingTeachers.map((teacher) => (
-                  <button key={teacher.id} type="button" onClick={() => chooseProfile({ role: "teacher", teacherId: teacher.id, name: teacher.name })} className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-700 last:border-b-0 hover:bg-slate-50">{teacher.name}</button>
-                )) : <p className="px-4 py-3 text-sm text-slate-500">{teachers.length ? "Преподаватели не найдены" : "Список преподавателей пока недоступен"}</p>}
+              <div className="relative mt-2">
+                <input
+                  id="teacher-profile-search"
+                  value={teacherSearch}
+                  onChange={(event) => setTeacherSearch(event.target.value)}
+                  placeholder="Начни вводить имя преподавателя..."
+                  autoComplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={teacherSearch.trim().length > 0}
+                  aria-controls="teacher-profile-results"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                />
+                {teacherSearch.trim().length > 0 && (
+                  <div id="teacher-profile-results" role="listbox" className="absolute inset-x-0 top-full z-10 mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                    {matchingTeachers.length ? matchingTeachers.map((teacher) => (
+                      <button
+                        key={teacher.id}
+                        type="button"
+                        role="option"
+                        aria-selected={false}
+                        onClick={() => chooseProfile({ role: "teacher", teacherId: teacher.id, name: teacher.name })}
+                        className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-700 last:border-b-0 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                      >
+                        {teacher.name}
+                      </button>
+                    )) : (
+                      <p className="px-4 py-3 text-sm text-slate-500">
+                        {teachers.length ? "Преподаватели не найдены" : "Список преподавателей пока недоступен"}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
