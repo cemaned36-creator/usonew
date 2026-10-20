@@ -1092,7 +1092,7 @@ export default function WeeklySchedulePage() {
             </section>}
 
             <footer className="pb-2 text-center text-xs text-slate-400">
-              University Schedule Optimizer
+              Оптимизатор расписания УрГУПС
             </footer>
           </div>
         </main>
