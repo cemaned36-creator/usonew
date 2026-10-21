@@ -1,4 +1,4 @@
-﻿*.rar
+*.rar
 *.zip
 *.7z
 *.dump
@@ -19,3 +19,6 @@ node_modules/
 **/node_modules/
 .next/
 **/.next/
+
+# Local import previews can contain personal and academic data
+backend/import_preview/
