@@ -494,10 +494,13 @@ export default function Home() {
 
                           <div className="min-w-0">
 
-                            <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-slate-800">
-                              <span className="truncate">{item.subject}</span>
-                              <span aria-hidden="true" className="shrink-0 text-emerald-500">·</span>
-                              <span className="shrink-0">{item.group}</span>
+                            <div className="min-w-0">
+                              <div className="break-words text-base font-semibold text-slate-800">
+                                {item.subject}
+                              </div>
+                              <div className="mt-1 break-words text-sm leading-5 text-slate-600">
+                                {item.group}
+                              </div>
                             </div>
 
                           </div>

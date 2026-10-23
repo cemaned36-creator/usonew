@@ -1,4 +1,4 @@
-﻿*.rar
+*.rar
 *.zip
 *.7z
 *.dump
@@ -19,3 +19,15 @@ node_modules/
 **/node_modules/
 .next/
 **/.next/
+
+# Local import previews can contain personal and academic data
+backend/import_preview/
+# Local backups and environment files
+/backups/
+.env
+.env.*
+!.env.example
+
+# Temporary code review exports
+/backend/*_context.txt
+/backend/*_review.txt

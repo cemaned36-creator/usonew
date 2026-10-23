@@ -6,7 +6,6 @@ from app.database import get_db
 from app.models.lesson import Lesson
 from app.models.lesson_requirement import LessonRequirement
 from app.models.room import Room
-from app.models.student_group import StudentGroup
 from app.models.weekly_schedule_entry import WeeklyScheduleEntry
 from app.services.optimization import (
     ScheduleItem,
@@ -15,7 +14,22 @@ from app.services.optimization import (
     _teacher_transition_total,
     preview_optimization,
 )
+from sqlalchemy import text
 
+from app.services.lesson_participants import (
+    load_lesson_participants,
+    get_lesson_students_count,
+)
+from app.services.equipment import (
+    load_equipment_profiles,
+    room_has_required_profiles,
+)
+
+from types import SimpleNamespace
+from app.services.weekly_validation import validate_weekly_entries
+from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query
+from app.models.teacher import Teacher
 
 router = APIRouter(
     prefix="/optimization",
@@ -32,25 +46,41 @@ class OptimizationChange(BaseModel):
 class OptimizationApplyRequest(BaseModel):
     changes: list[OptimizationChange]
     week_type: str = "odd"
+    teacher_id: int | None = Field(default=None, ge=1)
 
 
 @router.get("/preview")
 def optimization_preview(
     week_type: str = "odd",
     db: Session = Depends(get_db),
+    teacher_id: int | None = Query(default=None, ge=1),
 ):
     try:
         if week_type not in {"odd", "even"}:
-            raise HTTPException(status_code=422, detail="week_type должен быть odd или even")
-        return preview_optimization(db, week_type=week_type)
+            raise HTTPException(
+                status_code=422,
+                detail="week_type должен быть odd или even",
+            )
+
+        if teacher_id is not None and db.get(Teacher, teacher_id) is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Преподаватель не найден",
+            )
+
+        return preview_optimization(
+            db,
+            week_type=week_type,
+            teacher_id=teacher_id,
+        )
+
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Ошибка предварительной оптимизации: {str(e)}",
-        ) from e
-
+            detail=f"Ошибка предварительной оптимизации: {exc}",
+        ) from exc
 
 @router.post("/apply")
 def apply_optimization(
@@ -70,7 +100,27 @@ def apply_optimization(
         # сохранения устаревшего или вручную изменённого preview.
         if payload.week_type not in {"odd", "even"}:
             raise HTTPException(status_code=422, detail="week_type должен быть odd или even")
-        current_preview = preview_optimization(db, week_type=payload.week_type)
+
+        # Keep the schedule unchanged during recalculation and saving.
+        db.execute(text("SET LOCAL lock_timeout = '5s'"))
+        db.execute(text("""
+            LOCK TABLE weekly_schedule_entries
+            IN SHARE ROW EXCLUSIVE MODE
+        """))
+        if (
+            payload.teacher_id is not None
+            and db.get(Teacher, payload.teacher_id) is None
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail="Преподаватель не найден",
+            )
+
+        current_preview = preview_optimization(
+            db,
+            week_type=payload.week_type,
+            teacher_id=payload.teacher_id,
+        )
         expected = {
             item["entry_id"]: item
             for item in current_preview["changes"]
@@ -131,7 +181,13 @@ def apply_optimization(
             item.lesson_id: item
             for item in db.query(LessonRequirement).all()
         }
-        groups = {item.id: item for item in db.query(StudentGroup).all()}
+
+        participants = load_lesson_participants(
+            db,
+            list({entry.lesson_id for entry in db_entries}),
+        )
+
+        room_profiles, lesson_profiles = load_equipment_profiles(db)
 
         # Проверяем копии, не изменяя ORM-записи до успешной проверки.
         entries = [
@@ -156,6 +212,15 @@ def apply_optimization(
                 )
 
             lesson = lessons.get(entry.lesson_id)
+            if (
+                payload.teacher_id is not None
+                and lesson is not None
+                and lesson.teacher_id != payload.teacher_id
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="План содержит занятие другого преподавателя.",
+                )
             target_room = rooms.get(change.new_room_id)
             if lesson is None or target_room is None:
                 raise HTTPException(
@@ -164,8 +229,23 @@ def apply_optimization(
                 )
 
             requirement = requirements.get(entry.lesson_id)
-            group = groups.get(lesson.group_id)
-            if not _room_fits(target_room, requirement, group):
+            students_count = get_lesson_students_count(
+                participants[entry.lesson_id]
+            )
+
+            if (
+                not _room_fits(
+                    target_room,
+                    requirement,
+                    students_count,
+                )
+                or not room_has_required_profiles(
+                    target_room.id,
+                    entry.lesson_id,
+                    room_profiles,
+                    lesson_profiles,
+                )
+            ):
                 raise HTTPException(
                     status_code=409,
                     detail=(
@@ -191,7 +271,9 @@ def apply_optimization(
                     status_code=409,
                     detail=f"Для записи {entry.id} не найдена аудитория.",
                 )
-            if _has_schedule_conflict(room, entry, entries, lessons):
+            if _has_schedule_conflict(
+                room, entry, entries, lessons, participants
+            ):
                 raise HTTPException(
                     status_code=409,
                     detail=(
@@ -211,6 +293,31 @@ def apply_optimization(
                     "или недостаточно времени. Изменения не сохранены."
                 ),
             )
+
+
+        # Validate the complete proposed week before modifying ORM objects.
+        validation_entries = [
+            SimpleNamespace(
+                id=entry.id,
+                lesson_id=entry.lesson_id,
+                week_type=payload.week_type,
+                weekday=entry.weekday,
+                room_id=entry.room_id,
+                start_time=entry.start_time,
+                end_time=entry.end_time,
+            )
+            for entry in entries
+        ]
+
+        try:
+            validate_weekly_entries(db, validation_entries)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Итоговое расписание не прошло проверку: {exc}",
+            ) from exc
+
+
 
         for entry_id, change in submitted.items():
             orm_by_id[entry_id].room_id = change.new_room_id

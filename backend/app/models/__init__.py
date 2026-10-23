@@ -8,3 +8,11 @@ from .room_connection import RoomConnection
 from .schedule_entry import ScheduleEntry
 from .access_point import AccessPoint
 from .weekly_schedule_entry import WeeklyScheduleEntry
+from .teaching_load import TeachingLoad
+from .lesson_group import LessonGroup
+from .lesson_teaching_load import LessonTeachingLoad
+from .equipment_profile import (
+    EquipmentProfile,
+    RoomEquipmentProfile,
+    LessonEquipmentProfile,
+)
