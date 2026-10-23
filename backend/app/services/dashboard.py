@@ -1,782 +1,184 @@
-from datetime import date, datetime
-from collections import defaultdict
+from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.models.lesson import Lesson
 from app.models.room import Room
-from app.models.schedule_entry import ScheduleEntry
-
-from app.services.access import calculate_transition_time
-from app.services.conflict_checker import check_conflicts
-from app.services.optimizer import recommend_room
-
-
-KEY_OPERATION_MINUTES = 5
-
-
-def calculate_current_metrics(
-    db: Session,
-    entries: list[ScheduleEntry],
-):
-    """
-    Рассчитывает показатели текущего расписания.
-    """
-
-    transition_minutes = 0
-    key_operations = 0
-
-    # Группируем занятия по преподавателю
-    teacher_entries = defaultdict(list)
-
-    for entry in entries:
-
-        lesson = (
-            db.query(Lesson)
-            .filter(Lesson.id == entry.lesson_id)
-            .first()
-        )
-
-        if lesson:
-            teacher_entries[
-                lesson.teacher_id
-            ].append(entry)
-
-    # -----------------------------------------------------
-    # Перемещения преподавателей
-    # -----------------------------------------------------
-
-    for teacher_id, teacher_schedule in teacher_entries.items():
-
-        teacher_schedule.sort(
-            key=lambda entry: (
-                entry.date,
-                entry.start_time,
-            )
-        )
-
-        previous_entry = None
-
-        for entry in teacher_schedule:
-
-            if previous_entry is None:
-                previous_entry = entry
-                continue
-
-            # Не считаем переход между разными днями
-            if previous_entry.date != entry.date:
-                previous_entry = entry
-                continue
-
-            previous_room = (
-                db.query(Room)
-                .filter(
-                    Room.id
-                    == previous_entry.room_id
-                )
-                .first()
-            )
-
-            current_room = (
-                db.query(Room)
-                .filter(
-                    Room.id
-                    == entry.room_id
-                )
-                .first()
-            )
-
-            if not previous_room or not current_room:
-                previous_entry = entry
-                continue
-
-            transition = calculate_transition_time(
-                db=db,
-                previous_room_id=previous_room.id,
-                previous_access_type=previous_room.access_type,
-                target_room_id=current_room.id,
-                target_access_type=current_room.access_type,
-            )
-
-            if transition is not None:
-
-                transition_minutes += (
-                    transition["total_time"]
-                )
-
-                key_operations += (
-                    transition["key_time"]
-                    // KEY_OPERATION_MINUTES
-                )
-
-            previous_entry = entry
-
-    # -----------------------------------------------------
-    # Конфликты
-    # -----------------------------------------------------
-
-    conflicting_entries = set()
-
-    conflict_details = []
-
-    for entry in entries:
-
-        lesson = (
-            db.query(Lesson)
-            .filter(Lesson.id == entry.lesson_id)
-            .first()
-        )
-
-        if not lesson:
-            continue
-
-        conflicts = check_conflicts(
-            db=db,
-            lesson_id=entry.lesson_id,
-            room_id=entry.room_id,
-            schedule_date=entry.date,
-            start_time=entry.start_time,
-            end_time=entry.end_time,
-        )
-
-        if conflicts:
-
-            conflicting_entries.add(
-                entry.id
-            )
-
-            conflict_details.append(
-                {
-                    "entry_id": entry.id,
-                    "conflicts": conflicts,
-                }
-            )
-
-    return {
-        "transition_minutes": transition_minutes,
-        "key_operations": key_operations,
-        "conflicts": len(conflicting_entries),
-        "conflict_details": conflict_details,
-    }
+from app.models.subject import Subject
+from app.models.teacher import Teacher
+from app.models.weekly_schedule_entry import WeeklyScheduleEntry
+from app.services.lesson_participants import (
+    load_lesson_participants,
+    get_lesson_students_count,
+)
+from app.services.weekly_validation import validate_weekly_entries
 
 
-def calculate_optimized_metrics(
-    db: Session,
-    entries: list[ScheduleEntry],
-):
-    """
-    Запускает optimizer в режиме dry-run.
-
-    Существующие записи ScheduleEntry НЕ изменяются.
-    """
-
-    if not entries:
-        return {
-            "transition_minutes": 0,
-            "key_operations": 0,
-            "conflicts": 0,
-            "assignments": {},
-            "changes": [],
-        }
-
-    # -----------------------------------------------------
-    # Сортируем по времени.
-    #
-    # Это важно:
-    # сначала распределяются более ранние занятия,
-    # чтобы у optimizer уже была информация о предыдущем
-    # помещении преподавателя.
-    # -----------------------------------------------------
-
-    sorted_entries = sorted(
-        entries,
-        key=lambda entry: (
-            entry.date,
-            entry.start_time,
-            entry.id,
-        ),
+def get_academic_week(target_date: date) -> dict:
+    academic_year_start = (
+        target_date.year
+        if (target_date.month, target_date.day) >= (9, 1)
+        else target_date.year - 1
     )
-
-    # -----------------------------------------------------
-    # Результаты симуляции
-    # -----------------------------------------------------
-
-    assignments = {}
-
-    # предыдущая аудитория каждого преподавателя
-    teacher_previous = {}
-
-    # комнаты, занятые в конкретный момент
-    simulated_entries = []
-
-    # -----------------------------------------------------
-    # Распределение аудиторий
-    # -----------------------------------------------------
-
-    for entry in sorted_entries:
-
-        lesson = (
-            db.query(Lesson)
-            .filter(Lesson.id == entry.lesson_id)
-            .first()
-        )
-
-        if not lesson:
-            continue
-
-        previous_data = teacher_previous.get(
-            lesson.teacher_id
-        )
-        if (
-            previous_data
-            and previous_data["entry"].date != entry.date
-        ):
-            previous_data = None
-            
-        previous_room_id = None
-        previous_access_type = None
-        available_transition_minutes = None
-
-        if previous_data:
-
-            previous_entry = previous_data[
-                "entry"
-            ]
-
-            previous_room_id = previous_data[
-                "room_id"
-            ]
-
-            previous_access_type = previous_data[
-                "access_type"
-            ]
-
-            previous_end = datetime.combine(
-                entry.date,
-                previous_entry.end_time,
-            )
-
-            current_start = datetime.combine(
-                entry.date,
-                entry.start_time,
-            )
-
-            available_transition_minutes = int(
-                (
-                    current_start
-                    - previous_end
-                ).total_seconds()
-                / 60
-            )
-
-        # -------------------------------------------------
-        # Определяем занятые аудитории
-        # -------------------------------------------------
-
-        occupied_room_ids = set()
-
-        for simulated in simulated_entries:
-
-            if simulated["date"] != entry.date:
-                continue
-
-            # Есть пересечение по времени
-            if (
-                simulated["start_time"]
-                < entry.end_time
-                and simulated["end_time"]
-                > entry.start_time
-            ):
-                occupied_room_ids.add(
-                    simulated["room_id"]
-                )
-
-        # -------------------------------------------------
-        # Запускаем наш optimizer
-        # -------------------------------------------------
-
-        result = recommend_room(
-            db=db,
-            lesson_id=entry.lesson_id,
-            previous_room_id=previous_room_id,
-            previous_access_type=previous_access_type,
-            available_transition_minutes=available_transition_minutes,
-            excluded_room_ids=occupied_room_ids,
-        )
-
-        if not result or not result["room_id"]:
-            # Подходящая аудитория не найдена.
-            # Сохраняем исходную для отображения,
-            # но помечаем назначение как непроверенное.
-            room_id = entry.room_id
-
-            room = (
-                db.query(Room)
-                .filter(Room.id == room_id)
-                .first()
-            )
-
-            access_type = room.access_type if room else None
-            optimized = False
-            optimization_reason = (
-                result["reason"]
-                if result
-                else "Оптимизатор не вернул результат"
-            )
-        else:
-            room_id = result["room_id"]
-            access_type = result["access_type"]
-            optimized = True
-            optimization_reason = result["reason"]
-
-        # -------------------------------------------------
-        # Сохраняем симулированное назначение
-        # -------------------------------------------------
-
-        assignments[entry.id] = {
-            "room_id": room_id,
-            "access_type": access_type,
-            "optimized": optimized,
-            "reason": optimization_reason,
-        }
-
-        simulated_entries.append(
-            {
-                "entry_id": entry.id,
-                "lesson_id": entry.lesson_id,
-                "date": entry.date,
-                "start_time": entry.start_time,
-                "end_time": entry.end_time,
-                "room_id": room_id,
-            }
-        )
-
-        teacher_previous[
-            lesson.teacher_id
-        ] = {
-            "entry": entry,
-            "room_id": room_id,
-            "access_type": access_type,
-        }
-
-    # -----------------------------------------------------
-    # Метрики после оптимизации
-    # -----------------------------------------------------
-
-    transition_minutes = 0
-    key_operations = 0
-
-    teacher_entries = defaultdict(list)
-
-    for entry in entries:
-
-        lesson = (
-            db.query(Lesson)
-            .filter(Lesson.id == entry.lesson_id)
-            .first()
-        )
-
-        if lesson:
-            teacher_entries[
-                lesson.teacher_id
-            ].append(entry)
-
-    for teacher_id, teacher_schedule in teacher_entries.items():
-
-        teacher_schedule.sort(
-            key=lambda entry: (
-                entry.date,
-                entry.start_time,
-            )
-        )
-
-        previous_entry = None
-
-        for entry in teacher_schedule:
-
-            if previous_entry is None:
-                previous_entry = entry
-                continue
-
-            # Не считаем переход между разными днями
-            if previous_entry.date != entry.date:
-                previous_entry = entry
-                continue
-
-            previous_assignment = assignments.get(
-                previous_entry.id
-            )
-
-            current_assignment = assignments.get(
-                entry.id
-            )
-
-            if (
-                not previous_assignment
-                or not current_assignment
-            ):
-                previous_entry = entry
-                continue
-
-            transition = calculate_transition_time(
-                db=db,
-                previous_room_id=previous_assignment[
-                    "room_id"
-                ],
-                previous_access_type=previous_assignment[
-                    "access_type"
-                ],
-                target_room_id=current_assignment[
-                    "room_id"
-                ],
-                target_access_type=current_assignment[
-                    "access_type"
-                ],
-            )
-
-            if transition is not None:
-
-                transition_minutes += (
-                    transition["total_time"]
-                )
-
-                key_operations += (
-                    transition["key_time"]
-                    // KEY_OPERATION_MINUTES
-                )
-
-            previous_entry = entry
-
-    # -----------------------------------------------------
-    # Конфликты после оптимизации
-    # -----------------------------------------------------
-
-    optimized_conflicts = set()
-
-    for i, first in enumerate(simulated_entries):
-        for second in simulated_entries[i + 1:]:
-            # Сравниваем только занятия одного дня
-            if first["date"] != second["date"]:
-                continue
-
-            # Проверяем пересечение по времени
-            overlap = (
-                first["start_time"] < second["end_time"]
-                and first["end_time"] > second["start_time"]
-            )
-
-            if not overlap:
-                continue
-
-            # Конфликт одной аудитории
-            if first["room_id"] == second["room_id"]:
-                optimized_conflicts.add(first["entry_id"])
-                optimized_conflicts.add(second["entry_id"])
-
-            # Загружаем занятия для проверки преподавателей и групп
-            first_lesson = (
-                db.query(Lesson)
-                .filter(Lesson.id == first["lesson_id"])
-                .first()
-            )
-
-            second_lesson = (
-                db.query(Lesson)
-                .filter(Lesson.id == second["lesson_id"])
-                .first()
-            )
-
-            if not first_lesson or not second_lesson:
-                continue
-
-            # Конфликт преподавателя
-            if first_lesson.teacher_id == second_lesson.teacher_id:
-                optimized_conflicts.add(first["entry_id"])
-                optimized_conflicts.add(second["entry_id"])
-
-            # Конфликт учебной группы
-            if first_lesson.group_id == second_lesson.group_id:
-                optimized_conflicts.add(first["entry_id"])
-                optimized_conflicts.add(second["entry_id"])
-
-    
-    # -----------------------------------------------------
-    # Список изменённых аудиторий
-    # -----------------------------------------------------
-
-    changes = []
-
-    from app.models.subject import Subject
-    from app.models.teacher import Teacher
-    from app.models.student_group import StudentGroup
-
-    for entry in sorted_entries:
-        assignment = assignments.get(entry.id)
-
-        if not assignment:
-            continue
-
-        # Сравниваем с исходной аудиторией в БД
-        if assignment["room_id"] == entry.room_id:
-            continue
-
-        old_room = (
-            db.query(Room)
-            .filter(Room.id == entry.room_id)
-            .first()
-        )
-
-        new_room = (
-            db.query(Room)
-            .filter(Room.id == assignment["room_id"])
-            .first()
-        )
-
-        lesson = (
-            db.query(Lesson)
-            .filter(Lesson.id == entry.lesson_id)
-            .first()
-        )
-
-        if not old_room or not new_room or not lesson:
-            continue
-
-        subject = (
-            db.query(Subject)
-            .filter(Subject.id == lesson.subject_id)
-            .first()
-        )
-
-        teacher = (
-            db.query(Teacher)
-            .filter(Teacher.id == lesson.teacher_id)
-            .first()
-        )
-
-        group = (
-            db.query(StudentGroup)
-            .filter(StudentGroup.id == lesson.group_id)
-            .first()
-        )
-
-        changes.append({
-            "entry_id": entry.id,
-            "lesson_id": lesson.id,
-            "date": entry.date.isoformat(),
-            "time": entry.start_time.strftime("%H:%M"),
-            "end": entry.end_time.strftime("%H:%M"),
-            "subject": subject.name if subject else "Неизвестный предмет",
-            "teacher": teacher.name if teacher else "Неизвестный преподаватель",
-            "group": group.name if group else "Неизвестная группа",
-            "from_room": old_room.name,
-            "from_room_id": old_room.id,
-            "to_room": new_room.name,
-            "to_room_id": new_room.id,
-            "reason": "Аудитория изменена по результатам dry-run",
-        })
+    september_first = date(academic_year_start, 9, 1)
+    first_week_start = september_first - timedelta(
+        days=september_first.weekday()
+    )
+    week_number = ((target_date - first_week_start).days // 7) + 1
 
     return {
-        "transition_minutes": transition_minutes,
-        "key_operations": key_operations,
-        "conflicts": len(optimized_conflicts),
-        "assignments": assignments,
-        "changes": changes,
+        "academic_year": f"{academic_year_start}-{academic_year_start + 1}",
+        "week_number": week_number,
+        "week_type": "odd" if week_number % 2 else "even",
+        "week_start": (
+            target_date - timedelta(days=target_date.weekday())
+        ).isoformat(),
     }
 
 
-def get_dashboard_data(
+def get_daily_schedule(
     db: Session,
     target_date: date,
-):
-    """
-    Полностью формирует данные Dashboard.
-    """
-
-    # -----------------------------------------------------
-    # Статистика
-    # -----------------------------------------------------
-
-    from app.models.teacher import Teacher
-
-    lessons_count = (
-        db.query(Lesson).count()
-    )
-
-    teachers_count = (
-        db.query(Teacher).count()
-    )
-
-    rooms_count = (
-        db.query(Room).count()
-    )
-
-    # -----------------------------------------------------
-    # Расписание выбранного дня
-    # -----------------------------------------------------
+    teacher_id: int | None = None,
+) -> dict:
+    week = get_academic_week(target_date)
 
     entries = (
-        db.query(ScheduleEntry)
+        db.query(WeeklyScheduleEntry)
         .filter(
-            ScheduleEntry.date
-            == target_date
+            WeeklyScheduleEntry.weekday == target_date.weekday(),
+            WeeklyScheduleEntry.week_type == week["week_type"],
         )
         .order_by(
-            ScheduleEntry.start_time
+            WeeklyScheduleEntry.start_time,
+            WeeklyScheduleEntry.id,
         )
         .all()
     )
 
-    # -----------------------------------------------------
-    # Текущие метрики
-    # -----------------------------------------------------
+    lesson_ids = {entry.lesson_id for entry in entries}
+    lessons = {
+        lesson.id: lesson
+        for lesson in db.query(Lesson)
+        .filter(Lesson.id.in_(lesson_ids))
+        .all()
+    } if lesson_ids else {}
 
-    before = calculate_current_metrics(
-        db=db,
-        entries=entries,
-    )
+    room_ids = {entry.room_id for entry in entries}
+    rooms = {
+        room.id: room
+        for room in db.query(Room).filter(Room.id.in_(room_ids)).all()
+    } if room_ids else {}
 
-    # -----------------------------------------------------
-    # Оптимизированные метрики
-    # -----------------------------------------------------
+    teacher_ids = {lesson.teacher_id for lesson in lessons.values()}
+    teachers = {
+        teacher.id: teacher
+        for teacher in db.query(Teacher)
+        .filter(Teacher.id.in_(teacher_ids))
+        .all()
+    } if teacher_ids else {}
 
-    after = calculate_optimized_metrics(
-        db=db,
-        entries=entries,
-    )
+    subject_ids = {lesson.subject_id for lesson in lessons.values()}
+    subjects = {
+        subject.id: subject
+        for subject in db.query(Subject)
+        .filter(Subject.id.in_(subject_ids))
+        .all()
+    } if subject_ids else {}
 
-    # -----------------------------------------------------
-    # Расписание для frontend
-    # -----------------------------------------------------
-
+    participants = load_lesson_participants(db, list(lesson_ids))
     schedule = []
 
-    from app.models.subject import Subject
-    from app.models.teacher import Teacher
-    from app.models.student_group import StudentGroup
-
     for entry in entries:
+        lesson = lessons.get(entry.lesson_id)
+        room = rooms.get(entry.room_id)
 
-        lesson = (
-            db.query(Lesson)
-            .filter(
-                Lesson.id
-                == entry.lesson_id
+        if lesson is None or room is None:
+            raise ValueError(
+                f"Запись {entry.id}: отсутствует занятие или аудитория."
             )
-            .first()
-        )
 
-        if not lesson:
+        teacher = teachers.get(lesson.teacher_id)
+        subject = subjects.get(lesson.subject_id)
+
+        if teacher is None or subject is None:
+            raise ValueError(
+                f"Занятие {lesson.id}: отсутствует преподаватель или предмет."
+            )
+
+        if teacher_id is not None and lesson.teacher_id != teacher_id:
             continue
 
-        teacher = (
-            db.query(Teacher)
-            .filter(
-                Teacher.id
-                == lesson.teacher_id
+        members = participants[lesson.id]
+        labels = [
+            member["group_name"]
+            if member["subgroup_number"] == 0
+            else (
+                f'{member["group_name"]} '
+                f'({member["subgroup_number"]}-я подгруппа)'
             )
-            .first()
-        )
+            for member in members
+        ]
 
-        subject = (
-            db.query(Subject)
-            .filter(
-                Subject.id
-                == lesson.subject_id
-            )
-            .first()
-        )
-
-        group = (
-            db.query(StudentGroup)
-            .filter(
-                StudentGroup.id
-                == lesson.group_id
-            )
-            .first()
-        )
-
-        room = (
-            db.query(Room)
-            .filter(
-                Room.id
-                == entry.room_id
-            )
-            .first()
-        )
-
-        if not room:
-            continue
-
-        schedule.append(
-            {
-                "id": entry.id,
-                "time": entry.start_time.strftime(
-                    "%H:%M"
-                ),
-                "end": entry.end_time.strftime(
-                    "%H:%M"
-                ),
-                "subject": (
-                    subject.name
-                    if subject
-                    else "Неизвестный предмет"
-                ),
-                "teacher": (
-                    teacher.name
-                    if teacher
-                    else "Неизвестный преподаватель"
-                ),
-                "group": (
-                    group.name
-                    if group
-                    else "Неизвестная группа"
-                ),
-                "room": room.name,
-                "room_type": room.room_type,
-                "access_type": room.access_type,
-            }
-        )
-
-    # -----------------------------------------------------
-    # Финальный результат
-    # -----------------------------------------------------
+        schedule.append({
+            "id": entry.id,
+            "lesson_id": lesson.id,
+            "teacher_id": teacher.id,
+            "time": entry.start_time.strftime("%H:%M"),
+            "end": entry.end_time.strftime("%H:%M"),
+            "subject": subject.name,
+            "teacher": teacher.name,
+            "group": ", ".join(labels),
+            "groups": members,
+            "group_ids": [member["group_id"] for member in members],
+            "students_count": get_lesson_students_count(members),
+            "lesson_type": lesson.lesson_type,
+            "room": room.name,
+            "room_type": room.room_type,
+            "access_type": room.access_type,
+        })
 
     return {
         "date": target_date.isoformat(),
-
-        "stats": {
-            "lessons": lessons_count,
-            "teachers": teachers_count,
-            "rooms": rooms_count,
-            "problems": before["conflicts"],
-        },
-
+        **week,
+        "weekday": target_date.weekday(),
         "schedule": schedule,
+    }
 
-        "optimization": {
-            "before": {
-                "transition_minutes": before[
-                    "transition_minutes"
-                ],
-                "key_operations": before[
-                    "key_operations"
-                ],
-                "conflicts": before[
-                    "conflicts"
-                ],
-            },
 
-            "after": {
-                "transition_minutes": after[
-                    "transition_minutes"
-                ],
-                "key_operations": after[
-                    "key_operations"
-                ],
-                "conflicts": after[
-                    "conflicts"
-                ],
-            },
-            "changes": after["changes"],
+def get_dashboard_data(db: Session, target_date: date):
+    result = get_daily_schedule(db, target_date)
+
+    # Validate the complete day, including all teachers and groups.
+    entries = (
+        db.query(WeeklyScheduleEntry)
+        .filter(
+            WeeklyScheduleEntry.weekday == result["weekday"],
+            WeeklyScheduleEntry.week_type == result["week_type"],
+        )
+        .all()
+    )
+
+    validation_error = None
+    try:
+        validate_weekly_entries(db, entries)
+    except ValueError as exc:
+        validation_error = str(exc)
+
+    return {
+        **result,
+        "stats": {
+            "lessons": db.query(Lesson).count(),
+            "teachers": db.query(Teacher).count(),
+            "rooms": db.query(Room).count(),
+            # The validator stops at the first error.
+            # None means the total number of problems is unknown.
+            "problems": 0 if validation_error is None else None,
         },
+        "validation": {
+            "status": "valid" if validation_error is None else "invalid",
+            "first_error": validation_error,
+            "scope": "selected_day",
+        },
+        "optimization": None,
     }

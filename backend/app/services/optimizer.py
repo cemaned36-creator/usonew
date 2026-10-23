@@ -3,9 +3,16 @@ from sqlalchemy.orm import Session
 from app.models.lesson import Lesson
 from app.models.lesson_requirement import LessonRequirement
 from app.models.room import Room
-from app.models.student_group import StudentGroup
+from app.services.lesson_participants import (
+    load_lesson_participants,
+    get_lesson_students_count,
+)
 from app.services.access import calculate_transition_time
-
+from app.services.room_scope import ACTIVE_ROOM_BUILDINGS
+from app.services.equipment import (
+    load_equipment_profiles,
+    room_has_required_profiles,
+)
 
 def recommend_room(
     db: Session,
@@ -35,28 +42,33 @@ def recommend_room(
     if not requirement:
         return None
 
-    group = (
-        db.query(StudentGroup)
-        .filter(
-            StudentGroup.id == lesson.group_id
-        )
-        .first()
-    )
-
-    if not group:
+        # Для занятий в спорткомплексе аудиторию не подбираем.
+    if requirement.room_type == "gym":
         return None
+
+    participants = load_lesson_participants(db, [lesson.id])
+    students_count = get_lesson_students_count(
+        participants[lesson.id]
+    )
 
     excluded_room_ids = excluded_room_ids or set()
 
-    rooms = (
+    rooms_query = (
         db.query(Room)
         .filter(
-            Room.capacity >= group.students_count,
+            Room.capacity >= students_count,
             Room.capacity >= requirement.min_capacity,
-            Room.room_type == requirement.room_type,
+            Room.room_type != "gym",
+            Room.building.in_(ACTIVE_ROOM_BUILDINGS),
         )
-        .all()
     )
+
+    if requirement.room_type:
+        rooms_query = rooms_query.filter(
+            Room.room_type == requirement.room_type
+        )
+
+    rooms = rooms_query.all()
 
     best_room = None
     best_score = -999999
@@ -64,7 +76,27 @@ def recommend_room(
 
     failure_reasons = []
 
+    room_profiles, lesson_profiles = load_equipment_profiles(db)
+
     for room in rooms:
+
+        if not room_has_required_profiles(
+            room.id,
+            lesson.id,
+            room_profiles,
+            lesson_profiles,
+        ):
+            failure_reasons.append({
+                "type": "MISSING_EQUIPMENT_PROFILE",
+                "room_id": room.id,
+                "room_name": room.name,
+                "missing_profiles": sorted(
+                    lesson_profiles.get(lesson.id, set())
+                    - room_profiles.get(room.id, set())
+                ),
+            })
+            continue
+
 
         # -------------------------------------------------
         # Не используем аудитории, которые уже заняты
@@ -116,7 +148,7 @@ def recommend_room(
 
         if (
             requirement.whiteboard_required
-            and not room.board_type
+            and room.board_type != "whiteboard"
         ):
             failure_reasons.append(
                 {
@@ -196,7 +228,7 @@ def recommend_room(
             score += 5
 
         # Небольшой запас по вместимости
-        if room.capacity - group.students_count >= 5:
+        if room.capacity - students_count >= 5:
             score += 10
 
         # Предпочитаем нижние этажи

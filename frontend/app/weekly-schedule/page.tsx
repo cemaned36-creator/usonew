@@ -21,6 +21,8 @@ import {
   Settings,
 } from "lucide-react";
 
+import { formatParticipants } from "../../lib/lesson-participants";
+import type { LessonParticipant } from "../../lib/lesson-participants";
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
@@ -44,6 +46,9 @@ type Entry = {
   room_id: number;
   room_name: string | null;
   week_type: "odd" | "even";
+  groups?: LessonParticipant[];
+  students_count?: number;
+  lesson_type?: string | null;
 };
 
 type NamedOption = {
@@ -56,6 +61,9 @@ type Lesson = {
   teacher_id: number;
   subject_id: number;
   group_id: number;
+  groups?: LessonParticipant[];
+  students_count?: number;
+  lesson_type?: string | null;
 };
 
 type MessageType = "success" | "error" | "info";
@@ -68,11 +76,20 @@ function startOfWeek(date: Date) {
 }
 
 function getWeekType(date: Date): "odd" | "even" {
-  const value = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  value.setUTCDate(value.getUTCDate() + 4 - (value.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
-  const weekNumber = Math.ceil((((value.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  return weekNumber % 2 === 0 ? "even" : "odd";
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const academicYear = month >= 8 ? year : year - 1;
+
+  const septemberFirst = new Date(Date.UTC(academicYear, 8, 1));
+  const mondayOffset = (septemberFirst.getUTCDay() + 6) % 7;
+  const firstMonday =
+    septemberFirst.getTime() - mondayOffset * 86400000;
+
+  const selectedDay = Date.UTC(year, month, date.getDate());
+  const weekNumber =
+    Math.floor((selectedDay - firstMonday) / (7 * 86400000)) + 1;
+
+  return weekNumber % 2 === 1 ? "odd" : "even";
 }
 
 function formatDayDate(date: Date) {
@@ -103,7 +120,7 @@ export default function WeeklySchedulePage() {
   const [groups, setGroups] = useState<NamedOption[]>([]);
   const [rooms, setRooms] = useState<NamedOption[]>([]);
   const lessonPairs = [
-    { number: 1, start: "08:30", end: "10:05", label: "1-я пара (08:00–10:05)" },
+    { number: 1, start: "08:30", end: "10:05", label: "1-я пара (08:30–10:05)" },
     { number: 2, start: "10:15", end: "11:50", label: "2-я пара (10:15–11:50)" },
     { number: 3, start: "12:00", end: "13:35", label: "3-я пара (12:00–13:35)" },
     { number: 4, start: "14:30", end: "16:05", label: "4-я пара (14:30–16:05)" },
@@ -138,7 +155,7 @@ export default function WeeklySchedulePage() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [entryWeekType, setEntryWeekType] = useState<"odd" | "even">("odd");
   const [start, setStart] = useState("08:30");
-  const [end, setEnd] = useState("10:00");
+  const [end, setEnd] = useState("10:05");
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
@@ -153,58 +170,96 @@ export default function WeeklySchedulePage() {
     setMessageType(type);
   }
 
-  function lessonLabel(id: number) {
+  function lessonLabel(id: number, entry?: Entry) {
     const lesson = lessons.find((item) => item.id === id);
+    const scheduled = entry ?? entries.find((item) => item.lesson_id === id);
 
     if (!lesson) {
       return `Занятие #${id}`;
     }
 
     const subject = subjects.find(
-      (item) => item.id === lesson.subject_id
+      (item) => item.id === lesson.subject_id,
     );
     const teacher = teachers.find(
-      (item) => item.id === lesson.teacher_id
-    );
-    const group = groups.find(
-      (item) => item.id === lesson.group_id
+      (item) => item.id === lesson.teacher_id,
     );
 
     return [
       subject?.name ?? `Предмет #${lesson.subject_id}`,
       teacher?.name ?? `Преподаватель #${lesson.teacher_id}`,
-      group?.name ?? `Группа #${lesson.group_id}`,
+      formatParticipants(lesson.groups ?? scheduled?.groups),
     ].join(" — ");
   }
 
-  async function chooseCalendarDate(date: Date) {
+    async function chooseCalendarDate(date: Date) {
     const nextStart = startOfWeek(date);
     const nextType = getWeekType(date);
+
     setWeekStart(nextStart);
     setSelectedWeekType(nextType);
     setCalendarOpen(false);
     setLoading(true);
+
     try {
       await loadSchedule(nextType);
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "Не удалось загрузить расписание", "error");
+      showMessage(
+        error instanceof Error
+          ? error.message
+          : "Не удалось загрузить расписание",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
   }
 
   async function deleteScheduleBulk() {
-    const weekLabel = bulkDeleteType === "both" ? "обеих недель" : bulkDeleteType === "odd" ? "нечётной недели" : "чётной недели";
-    if (!window.confirm(`Удалить все занятия для ${weekLabel}? Это действие нельзя отменить.`)) return;
+    const weekLabel =
+      bulkDeleteType === "both"
+        ? "обеих недель"
+        : bulkDeleteType === "odd"
+          ? "нечётной недели"
+          : "чётной недели";
+
+    if (
+      !window.confirm(
+        `Удалить все занятия для ${weekLabel}? Это действие нельзя отменить.`,
+      )
+    ) {
+      return;
+    }
+
     setBulkDeleting(true);
+
     try {
-      const response = await fetch(`${API}/weekly-schedule/bulk?week_type=${bulkDeleteType}`, { method: "DELETE" });
+      const response = await fetch(
+        `${API}/weekly-schedule/bulk?week_type=${bulkDeleteType}`,
+        { method: "DELETE" },
+      );
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail ?? "Не удалось очистить расписание");
-      showMessage(`Удалено занятий: ${data.deleted_count ?? 0}.`, "success");
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data.detail === "string"
+            ? data.detail
+            : "Не удалось очистить расписание",
+        );
+      }
+
+      showMessage(
+        `Удалено занятий: ${data.deleted_count ?? 0}.`,
+        "success",
+      );
       await loadSchedule(selectedWeekType);
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "Ошибка удаления расписания", "error");
+      showMessage(
+        error instanceof Error
+          ? error.message
+          : "Ошибка удаления расписания",
+        "error",
+      );
     } finally {
       setBulkDeleting(false);
     }
@@ -387,7 +442,7 @@ export default function WeeklySchedulePage() {
     }
   }
 
-  
+
   async function readApiResponse(response: Response) {
     const data = await response.json().catch(() => null);
 
@@ -545,7 +600,7 @@ export default function WeeklySchedulePage() {
       .toLowerCase()
       .includes(teacherSearch.trim().toLowerCase())
   );
-  
+
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-slate-900">
       <div className="flex min-h-screen">
@@ -819,7 +874,7 @@ export default function WeeklySchedulePage() {
                                     })()}
 
                                     <p className="break-words text-sm font-medium leading-5 text-slate-800">
-                                      {lessonLabel(entry.lesson_id)}
+                                      {lessonLabel(entry.lesson_id, entry)}
                                     </p>
                                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                                       <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1">
@@ -838,7 +893,7 @@ export default function WeeklySchedulePage() {
                                   type="button"
                                   onClick={() => removeEntry(entry.id)}
                                   disabled={deletingId === entry.id}
-                                  aria-label={`Удалить занятие ${lessonLabel(entry.lesson_id)}`}
+                                  aria-label={`Удалить занятие ${lessonLabel(entry.lesson_id, entry)}`}
                                   className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9"
                                 >
                                   <Trash2 className="h-4 w-4" />

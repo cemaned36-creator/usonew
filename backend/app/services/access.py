@@ -1,5 +1,7 @@
 
 from sqlalchemy.orm import Session
+from app.models.room import Room
+from app.models.access_point import AccessPoint
 
 from app.services.distance import (
     get_travel_time,
@@ -16,6 +18,34 @@ KEY_RETURN_TIME = 5
 
 # Типы доступа без получения ключа
 NO_KEY_ACCESS_TYPES = {"OPEN", "PASS"}
+
+
+def _get_key_desk_id(db: Session, room_id: int) -> int | None:
+    room = db.get(Room, room_id)
+    if room is None:
+        return None
+
+    if room.building == "Главный корпус":
+        desk = db.get(AccessPoint, KEY_DESK_ID)
+        if desk is not None and desk.point_type == "KEY_DESK":
+            return desk.id
+        return None
+
+    if room.building == "Б":
+        desks = (
+            db.query(AccessPoint)
+            .filter(
+                AccessPoint.name == "Охрана корпуса Б",
+                AccessPoint.point_type == "KEY_DESK",
+            )
+            .limit(2)
+            .all()
+        )
+        if len(desks) == 1:
+            return desks[0].id
+
+    return None
+
 
 
 def calculate_transition_time(
@@ -46,6 +76,20 @@ def calculate_transition_time(
     ):
         return None
 
+    target_key_desk_id = None
+    previous_key_desk_id = None
+
+    if target_access_type == "KEY":
+        target_key_desk_id = _get_key_desk_id(db, target_room_id)
+        if target_key_desk_id is None:
+            return None
+
+    if previous_room_id is not None and previous_access_type == "KEY":
+        previous_key_desk_id = _get_key_desk_id(db, previous_room_id)
+        if previous_key_desk_id is None:
+            return None
+
+
     # Первое занятие: перехода из предыдущей аудитории нет
     if previous_room_id is None:
         if target_access_type in NO_KEY_ACCESS_TYPES:
@@ -57,7 +101,7 @@ def calculate_transition_time(
 
         travel_time = get_access_point_to_room_time(
             db=db,
-            access_point_id=KEY_DESK_ID,
+            access_point_id=target_key_desk_id,
             room_id=target_room_id,
         )
 
@@ -106,12 +150,12 @@ def calculate_transition_time(
         to_desk_time = get_room_to_access_point_time(
             db=db,
             room_id=previous_room_id,
-            access_point_id=KEY_DESK_ID,
+            access_point_id=target_key_desk_id,
         )
 
         from_desk_time = get_access_point_to_room_time(
             db=db,
-            access_point_id=KEY_DESK_ID,
+            access_point_id=target_key_desk_id,
             room_id=target_room_id,
         )
 
@@ -135,12 +179,12 @@ def calculate_transition_time(
         to_desk_time = get_room_to_access_point_time(
             db=db,
             room_id=previous_room_id,
-            access_point_id=KEY_DESK_ID,
+            access_point_id=previous_key_desk_id,
         )
 
         from_desk_time = get_access_point_to_room_time(
             db=db,
-            access_point_id=KEY_DESK_ID,
+            access_point_id=previous_key_desk_id,
             room_id=target_room_id,
         )
 
@@ -161,15 +205,19 @@ def calculate_transition_time(
         previous_access_type == "KEY"
         and target_access_type == "KEY"
     ):
+        if previous_key_desk_id != target_key_desk_id:
+        # Переход между разными вахтами пока не поддерживается.
+            return None
+
         to_desk_time = get_room_to_access_point_time(
             db=db,
             room_id=previous_room_id,
-            access_point_id=KEY_DESK_ID,
+            access_point_id=previous_key_desk_id,
         )
 
         from_desk_time = get_access_point_to_room_time(
             db=db,
-            access_point_id=KEY_DESK_ID,
+            access_point_id=target_key_desk_id,
             room_id=target_room_id,
         )
 

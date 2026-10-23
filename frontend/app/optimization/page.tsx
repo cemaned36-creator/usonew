@@ -19,6 +19,8 @@ import {
   Info,
   Settings,
 } from "lucide-react";
+import { formatParticipants } from "../../lib/lesson-participants";
+import type { LessonParticipant } from "../../lib/lesson-participants";
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const DAYS = [
@@ -43,6 +45,8 @@ type ScheduleEntry = {
   teacher_id?: number | null;
   subject_id?: number | null;
   group_id?: number | null;
+  groups?: LessonParticipant[];
+  students_count?: number;
 };
 
 type NamedOption = { id: number; name: string };
@@ -51,6 +55,9 @@ type Lesson = {
   teacher_id: number;
   subject_id: number;
   group_id: number;
+  groups?: LessonParticipant[];
+  students_count?: number;
+  lesson_type?: string | null;
 };
 type Change = {
   entry_id: number;
@@ -76,6 +83,9 @@ type OptimizationResult = {
   time_saved: number | null;
   unknown_routes: UnknownRoute[];
   saved_to_database: boolean;
+  week_type: "odd" | "even";
+  teacher_id: number | null;
+  eligible_entries_count: number;
 };
 
 type Message = { kind: "success" | "error" | "info"; text: string };
@@ -95,7 +105,7 @@ export default function OptimizationPage() {
   const [message, setMessage] = useState<Message | null>(null);
   const [teacherAccess, setTeacherAccess] = useState(false);
   const [selectedWeekType, setSelectedWeekType] = useState("odd");
-
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
   useEffect(() => {
     try {
       const savedProfile = localStorage.getItem("uso-user-profile");
@@ -170,11 +180,33 @@ export default function OptimizationPage() {
     setMessage(null);
     setConfirmStep(0);
     try {
-      const response = await fetch(`${API}/optimization/preview?week_type=${selectedWeekType}`);
+      const params = new URLSearchParams({
+        week_type: selectedWeekType,
+      });
+
+      if (selectedTeacherId) {
+        params.set("teacher_id", selectedTeacherId);
+      }
+
+      const response = await fetch(
+        `${API}/optimization/preview?${params.toString()}`,
+      );
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
           typeof data?.detail === "string" ? data.detail : `Ошибка API: HTTP ${response.status}`
+        );
+      }
+      const expectedTeacherId = selectedTeacherId
+        ? Number(selectedTeacherId)
+        : null;
+
+      if (
+        data?.week_type !== selectedWeekType ||
+        data?.teacher_id !== expectedTeacherId
+      ) {
+        throw new Error(
+          "API вернул результат для другой недели или преподавателя. Проверь версию backend.",
         );
       }
       setResult(data as OptimizationResult);
@@ -197,6 +229,22 @@ export default function OptimizationPage() {
 
   async function applyOptimization() {
     if (!result || result.changes.length === 0) return;
+    const expectedTeacherId = selectedTeacherId
+      ? Number(selectedTeacherId)
+      : null;
+
+    if (
+      result.week_type !== selectedWeekType ||
+      result.teacher_id !== expectedTeacherId
+    ) {
+      setResult(null);
+      setConfirmStep(0);
+      setMessage({
+        kind: "error",
+        text: "Параметры изменились. Выполни расчёт заново.",
+      });
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -204,7 +252,8 @@ export default function OptimizationPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          week_type: selectedWeekType,
+          week_type: result.week_type,
+          teacher_id: result.teacher_id,
           changes: result.changes.map((change) => ({
             entry_id: change.entry_id,
             old_room_id: change.old_room_id,
@@ -240,16 +289,32 @@ export default function OptimizationPage() {
 
   function lessonDetails(entry: ScheduleEntry) {
     const lesson = lessonById.get(entry.lesson_id);
-    if (!lesson) return { subject: `Занятие #${entry.lesson_id}`, teacher: "Преподаватель не найден", group: "Группа не найдена" };
+    const subjectId = entry.subject_id ?? lesson?.subject_id;
+    const teacherId = entry.teacher_id ?? lesson?.teacher_id;
+
     return {
-      subject: subjectById.get(lesson.subject_id) ?? `Предмет #${lesson.subject_id}`,
-      teacher: teacherById.get(lesson.teacher_id) ?? `Преподаватель #${lesson.teacher_id}`,
-      group: groupById.get(lesson.group_id) ?? `Группа #${lesson.group_id}`,
+      subject:
+        subjectId != null
+          ? subjectById.get(subjectId) ?? `Предмет #${subjectId}`
+          : `Занятие #${entry.lesson_id}`,
+      teacher:
+        teacherId != null
+          ? teacherById.get(teacherId) ?? `Преподаватель #${teacherId}`
+          : "Преподаватель не найден",
+      group: formatParticipants(entry.groups ?? lesson?.groups),
     };
   }
 
   function renderScheduleColumn(optimized: boolean) {
-    const items = optimized ? displayEntries : entries;
+    const source = optimized ? displayEntries : entries;
+    const items = selectedTeacherId
+      ? source.filter(
+          (entry) =>
+            (entry.teacher_id ??
+              lessonById.get(entry.lesson_id)?.teacher_id) ===
+            Number(selectedTeacherId),
+        )
+      : source;
     return (
       <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
@@ -395,6 +460,7 @@ export default function OptimizationPage() {
                     type="button"
                     onClick={() => { setSelectedWeekType("odd"); setResult(null); setMessage(null); }}
                     aria-pressed={selectedWeekType === "odd"}
+                    disabled={running || saving || loadingData}
                     className={`min-w-[112px] rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${selectedWeekType === "odd" ? "border-slate-900 bg-slate-900 text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800"}`}
                   >
                     Нечётная
@@ -403,11 +469,47 @@ export default function OptimizationPage() {
                     type="button"
                     onClick={() => { setSelectedWeekType("even"); setResult(null); setMessage(null); }}
                     aria-pressed={selectedWeekType === "even"}
+                    disabled={running || saving || loadingData}
                     className={`min-w-[112px] rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${selectedWeekType === "even" ? "border-slate-900 bg-slate-900 text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800"}`}
                   >
                     Чётная
                   </button>
                 </div>
+              </div>
+              <div className="mb-5">
+                <label
+                  htmlFor="optimization-teacher"
+                  className="mb-2 block text-sm font-medium text-slate-700"
+                >
+                  Преподаватель
+                </label>
+
+                <select
+                  id="optimization-teacher"
+                  value={selectedTeacherId}
+                  disabled={running || saving || loadingData}
+                  onChange={(event) => {
+                    setSelectedTeacherId(event.target.value);
+                    setResult(null);
+                    setConfirmStep(0);
+                    setMessage(null);
+                  }}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 disabled:opacity-50 sm:max-w-xl"
+                >
+                  <option value="">Все преподаватели</option>
+                  {[...teachers]
+                    .sort((a, b) => a.name.localeCompare(b.name, "ru"))
+                    .map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.name}
+                      </option>
+                    ))}
+                </select>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Меняются аудитории выбранного преподавателя в корпусе Б.
+                  Занятость помещений проверяется по всему расписанию.
+                </p>
               </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -475,7 +577,7 @@ export default function OptimizationPage() {
                           <ul className="mt-2 space-y-2 text-sm text-amber-800">
                             {result.unknown_routes.map((route) => (
                               <li key={`${route.previous_entry_id}-${route.current_entry_id}`}>
-                                Занятия #{route.previous_entry_id} → #{route.current_entry_id}: {route.reason}
+                                Записи расписания #{route.previous_entry_id} → #{route.current_entry_id}: {route.reason}
                               </li>
                             ))}
                           </ul>

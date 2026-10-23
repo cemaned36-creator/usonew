@@ -22,6 +22,14 @@ from app.services.lesson_times import get_lesson_pair
 
 from datetime import time, datetime
 
+from app.services.lesson_participants import (
+    load_lesson_participants,
+    get_lesson_students_count,
+    participants_overlap,
+)
+from app.models.lesson_group import LessonGroup
+from app.services.weekly_validation import validate_weekly_entries
+
 router = APIRouter(
     prefix="/weekly-schedule",
     tags=["Weekly Schedule"],
@@ -257,62 +265,41 @@ async def preview_schedule_import(
         lesson = None
 
         if group and subject and teacher:
-            lesson = (
+            matches = (
                 db.query(Lesson)
+                .join(
+                    LessonGroup,
+                    LessonGroup.lesson_id == Lesson.id,
+                )
                 .filter(
-                    Lesson.group_id == group.id,
+                    LessonGroup.group_id == group.id,
                     Lesson.subject_id == subject.id,
                     Lesson.teacher_id == teacher.id,
                 )
-                .first()
-            )
-
-            print(
-                "IMPORT CHECK:",
-                {
-                    "group": group.name,
-                    "group_id": group.id,
-                    "subject": subject.name,
-                    "subject_id": subject.id,
-                    "teacher": teacher.name,
-                    "teacher_id": teacher.id,
-                    "lesson_id": lesson.id if lesson else None,
-                },
-            )
-        if group and subject and teacher:
-            debug_matches = (
-                db.query(Lesson)
-                .filter(
-                    Lesson.group_id == group.id,
-                    Lesson.subject_id == subject.id,
-                    Lesson.teacher_id == teacher.id,
-                )
+                .distinct()
+                .order_by(Lesson.id)
                 .all()
             )
 
-            print(
-                "IMPORT DEBUG:",
-                {
-                    "group_id": group.id,
-                    "subject_id": subject.id,
-                    "teacher_id": teacher.id,
-                    "matches": [
-                        {
-                            "id": item.id,
-                            "group_id": item.group_id,
-                            "subject_id": item.subject_id,
-                            "teacher_id": item.teacher_id,
-                        }
-                        for item in debug_matches
-                    ],
-                },
-            )
-            if lesson is None:
+            if len(matches) == 1:
+                lesson = matches[0]
+
+            elif not matches:
                 issues.append(
                     "В базе нет занятия для этой группы, "
                     "предмета и преподавателя"
                 )
 
+            else:
+                candidate_ids = ", ".join(
+                    str(item.id) for item in matches
+                )
+                issues.append(
+                    "Найдено несколько занятий: "
+                    f"{candidate_ids}. Текущий формат Excel "
+                    "не позволяет однозначно выбрать вид занятия "
+                    "и подгруппу."
+                )
         result.append({
             "excel_row": row_number,
             "weekday": str(weekday) if weekday is not None else None,
@@ -443,6 +430,10 @@ async def import_weekly_schedule(
         # для проверки конфликтов по каждому дню.
         all_entries = existing_entries + planned_entries
 
+        participants = load_lesson_participants(
+            db,
+            list({entry.lesson_id for entry in all_entries}),
+        )
         lessons_by_id = {}
 
         for entry in all_entries:
@@ -505,8 +496,11 @@ async def import_weekly_schedule(
                     )
 
                 if (
-                    other_lesson
-                    and other_lesson.group_id == lesson.group_id
+                    other_lesson is not None
+                    and participants_overlap(
+                        participants[lesson.id],
+                        participants[other_lesson.id],
+                    )
                 ):
                     raise HTTPException(
                         status_code=409,
@@ -559,6 +553,11 @@ async def import_weekly_schedule(
                     target_room=current_room,
                     available_minutes=available_minutes,
                 )
+
+        try:
+            validate_weekly_entries(db, planned_entries)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
         # 7. После успешных проверок заменяем расписание только выбранной недели.
         # Файл полностью заменяет расписание только выбранного типа недели.
@@ -662,44 +661,75 @@ def get_weekly_schedule(
     week_type: str = Query("odd", pattern="^(odd|even)$"),
     db: Session = Depends(get_db),
 ):
-    query = db.query(WeeklyScheduleEntry)
-    query = query.filter(WeeklyScheduleEntry.week_type == week_type)
     entries = (
-        query.order_by(
+        db.query(WeeklyScheduleEntry)
+        .filter(WeeklyScheduleEntry.week_type == week_type)
+        .order_by(
             WeeklyScheduleEntry.weekday,
             WeeklyScheduleEntry.start_time,
+            WeeklyScheduleEntry.id,
         )
         .all()
     )
 
+    lesson_ids = {entry.lesson_id for entry in entries}
+    room_ids = {entry.room_id for entry in entries}
+
+    lessons = {
+        lesson.id: lesson
+        for lesson in db.query(Lesson)
+        .filter(Lesson.id.in_(lesson_ids))
+        .all()
+    } if lesson_ids else {}
+
+    rooms = {
+        room.id: room
+        for room in db.query(Room)
+        .filter(Room.id.in_(room_ids))
+        .all()
+    } if room_ids else {}
+
+    participants = load_lesson_participants(
+        db, list(lesson_ids)
+    )
+
     result = []
 
-    
     for entry in entries:
-        lesson = db.get(Lesson, entry.lesson_id)
-        room = db.get(Room, entry.room_id)
+        lesson = lessons.get(entry.lesson_id)
+        room = rooms.get(entry.room_id)
 
-        weekday = entry.weekday
-        start_time = entry.start_time
-        end_time = entry.end_time
+        if lesson is None or room is None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"У записи {entry.id} отсутствует занятие или аудитория.",
+            )
+
+        members = participants[entry.lesson_id]
 
         result.append({
             "id": entry.id,
             "lesson_id": entry.lesson_id,
             "week_type": entry.week_type,
-            "weekday": weekday,
-            "start_time": start_time.strftime("%H:%M") if start_time else None,
-            "end_time": end_time.strftime("%H:%M") if end_time else None,
+            "weekday": entry.weekday,
+            "start_time": entry.start_time.strftime("%H:%M"),
+            "end_time": entry.end_time.strftime("%H:%M"),
             "room_id": entry.room_id,
-            "room_name": room.name if room else None,
-            "teacher_id": lesson.teacher_id if lesson else None,
-            "subject_id": lesson.subject_id if lesson else None,
-            "group_id": lesson.group_id if lesson else None,
+            "room_name": room.name,
+            "teacher_id": lesson.teacher_id,
+            "subject_id": lesson.subject_id,
+
+            # Legacy field retained for existing frontend code.
+            "group_id": lesson.group_id,
+
+            # Complete membership of the lesson.
+            "group_ids": [member["group_id"] for member in members],
+            "groups": members,
+            "students_count": get_lesson_students_count(members),
+            "lesson_type": lesson.lesson_type,
         })
 
-
     return result
-
 
 @router.post("/")
 def assign_lesson(
@@ -754,6 +784,11 @@ def assign_lesson(
     )
     entries = entries_query.all()
 
+    participants = load_lesson_participants(
+        db,
+        list({lesson.id} | {entry.lesson_id for entry in entries}),
+    )
+
     # Сначала проверяем конфликты расписания.
     for entry in entries:
         other_lesson = db.get(Lesson, entry.lesson_id)
@@ -781,7 +816,10 @@ def assign_lesson(
                 "У преподавателя уже есть занятие в это время",
             )
 
-        if other_lesson.group_id == lesson.group_id:
+        if participants_overlap(
+            participants[lesson.id],
+            participants[other_lesson.id],
+        ):
             raise HTTPException(
                 409,
                 "У группы уже есть занятие в это время",
@@ -866,7 +904,7 @@ def assign_lesson(
             available_minutes=available_minutes,
         )
 
-    
+
     # Сохраняем запись только после успешных проверок.
     entry = WeeklyScheduleEntry(
         lesson_id=data.lesson_id,
@@ -876,6 +914,11 @@ def assign_lesson(
         start_time=data.start_time,
         end_time=data.end_time,
     )
+
+    try:
+        validate_weekly_entries(db, [*entries, entry])
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     db.add(entry)
     db.commit()
