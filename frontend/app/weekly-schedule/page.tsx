@@ -46,6 +46,7 @@ type Entry = {
   room_id: number;
   room_name: string | null;
   week_type: "odd" | "even";
+  faculties?: string[];
   groups?: LessonParticipant[];
   students_count?: number;
   lesson_type?: string | null;
@@ -111,6 +112,7 @@ export default function WeeklySchedulePage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [teachers, setTeachers] = useState<NamedOption[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [selectedFaculty, setSelectedFaculty] = useState("");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [showTeacherSuggestions, setShowTeacherSuggestions] = useState(false);
   const [profileRole, setProfileRole] = useState<"admin" | "teacher">("admin");
@@ -462,6 +464,8 @@ export default function WeeklySchedulePage() {
   }
 
   async function previewImport(weekType: "odd" | "even") {
+    if (!profileLoaded || profileRole !== "admin") return;
+
     const importFile = weekType === "odd" ? oddImportFile : evenImportFile;
     if (!importFile) {
       showMessage("Сначала выбери Excel-файл (.xlsx)", "error");
@@ -508,6 +512,8 @@ export default function WeeklySchedulePage() {
   }
 
   async function importSchedule(weekType: "odd" | "even") {
+    if (!profileLoaded || profileRole !== "admin") return;
+
     const importFile = weekType === "odd" ? oddImportFile : evenImportFile;
     const importPreview = weekType === "odd" ? oddImportPreview : evenImportPreview;
 
@@ -570,7 +576,19 @@ export default function WeeklySchedulePage() {
   const isAdmin = profileLoaded && profileRole === "admin";
   const isTeacherView = profileLoaded && profileRole === "teacher";
 
+  const faculties = Array.from(new Set([
+    ...entries.flatMap((entry) => entry.faculties ?? []),
+    ...(selectedFaculty && selectedFaculty !== "__unassigned__" ? [selectedFaculty] : []),
+  ])).sort((a, b) => a.localeCompare(b, "ru"));
+
   const filteredEntries = entries.filter((entry) => {
+    const entryFaculties = entry.faculties ?? [];
+    if (selectedFaculty === "__unassigned__") {
+      if (entryFaculties.length > 0) return false;
+    } else if (selectedFaculty && !entryFaculties.includes(selectedFaculty)) {
+      return false;
+    }
+
     if (selectedTeacherId === "") {
       return true;
     }
@@ -726,6 +744,21 @@ export default function WeeklySchedulePage() {
                       </div>
                       <p className="mt-3 text-xs text-slate-500">Выберите любой день нужной недели.</p>
                     </div>}
+                  </div>
+                  <div className="min-w-0 flex-1 sm:max-w-xs">
+                    <label htmlFor="faculty-filter" className="sr-only">Факультет</label>
+                    <select
+                      id="faculty-filter"
+                      value={selectedFaculty}
+                      onChange={(event) => setSelectedFaculty(event.target.value)}
+                      className="block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                    >
+                      <option value="">Все факультеты</option>
+                      {faculties.map((faculty) => (
+                        <option key={faculty} value={faculty}>{faculty}</option>
+                      ))}
+                      <option value="__unassigned__">Факультет не указан</option>
+                    </select>
                   </div>
                   {isAdmin && <div className="relative min-w-0 flex-1 sm:max-w-md">
                     <label htmlFor="teacher-search" className="sr-only">Поиск преподавателя</label>
@@ -1028,7 +1061,7 @@ export default function WeeklySchedulePage() {
             )}
 
 {/* Импорт отдельных расписаний по типу недели */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        {isAdmin && <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
             <h2 className="text-base font-semibold text-slate-900">
               Импорт расписания из Excel
@@ -1123,7 +1156,7 @@ export default function WeeklySchedulePage() {
               </div>
             ))}
           </div>
-        </section>
+        </section>}
 
 
 

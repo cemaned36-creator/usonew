@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.teaching_load import TeachingLoad
+from app.models.lesson_teaching_load import LessonTeachingLoad
 from app.models.lesson import Lesson
 from app.models.room import Room
 from app.models.weekly_schedule_entry import WeeklyScheduleEntry
@@ -693,6 +695,23 @@ def get_weekly_schedule(
         db, list(lesson_ids)
     )
 
+    # A joint lesson can belong to several faculties. Fetch all source rows
+    # together to avoid a query per schedule entry.
+    faculties_by_lesson = {lesson_id: set() for lesson_id in lesson_ids}
+    if lesson_ids:
+        faculty_rows = (
+            db.query(LessonTeachingLoad.lesson_id, TeachingLoad.faculty)
+            .join(
+                TeachingLoad,
+                TeachingLoad.id == LessonTeachingLoad.teaching_load_id,
+            )
+            .filter(LessonTeachingLoad.lesson_id.in_(lesson_ids))
+            .all()
+        )
+        for lesson_id, faculty in faculty_rows:
+            if faculty and faculty.strip():
+                faculties_by_lesson[lesson_id].add(faculty.strip())
+
     result = []
 
     for entry in entries:
@@ -725,6 +744,7 @@ def get_weekly_schedule(
             # Complete membership of the lesson.
             "group_ids": [member["group_id"] for member in members],
             "groups": members,
+            "faculties": sorted(faculties_by_lesson[entry.lesson_id]),
             "students_count": get_lesson_students_count(members),
             "lesson_type": lesson.lesson_type,
         })
