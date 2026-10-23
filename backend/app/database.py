@@ -18,7 +18,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL не найден в файле .env")
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(
     autocommit=False,
