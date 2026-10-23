@@ -578,14 +578,12 @@ export default function WeeklySchedulePage() {
 
   const faculties = Array.from(new Set([
     ...entries.flatMap((entry) => entry.faculties ?? []),
-    ...(selectedFaculty && selectedFaculty !== "__unassigned__" ? [selectedFaculty] : []),
+    ...(selectedFaculty ? [selectedFaculty] : []),
   ])).sort((a, b) => a.localeCompare(b, "ru"));
 
   const filteredEntries = entries.filter((entry) => {
     const entryFaculties = entry.faculties ?? [];
-    if (selectedFaculty === "__unassigned__") {
-      if (entryFaculties.length > 0) return false;
-    } else if (selectedFaculty && !entryFaculties.includes(selectedFaculty)) {
+    if (selectedFaculty && !entryFaculties.includes(selectedFaculty)) {
       return false;
     }
 
@@ -757,7 +755,6 @@ export default function WeeklySchedulePage() {
                       {faculties.map((faculty) => (
                         <option key={faculty} value={faculty}>{faculty}</option>
                       ))}
-                      <option value="__unassigned__">Факультет не указан</option>
                     </select>
                   </div>
                   {isAdmin && <div className="relative min-w-0 flex-1 sm:max-w-md">
