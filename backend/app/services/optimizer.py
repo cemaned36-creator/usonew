@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.services.teacher_conditions import load_teacher_conditions, room_allowed, entrance_distances, entrance_cost
 from app.models.lesson import Lesson
 from app.models.lesson_requirement import LessonRequirement
 from app.models.room import Room
@@ -78,7 +79,13 @@ def recommend_room(
 
     room_profiles, lesson_profiles = load_equipment_profiles(db)
 
+    teacher = load_teacher_conditions(db).get(lesson.teacher_id)
+    distances = entrance_distances(db)
+    best_key = None
+
     for room in rooms:
+        if not room_allowed(room, teacher):
+            continue
 
         if not room_has_required_profiles(
             room.id,
@@ -238,7 +245,9 @@ def recommend_room(
         # Лучший вариант
         # -------------------------------------------------
 
-        if score > best_score:
+        rank = (entrance_cost(room.id, teacher, distances), -score)
+        if best_key is None or rank < best_key:
+            best_key = rank
             best_score = score
             best_room = room
             best_transition = transition
