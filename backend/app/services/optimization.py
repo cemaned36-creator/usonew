@@ -19,6 +19,14 @@ from app.services.equipment import (
     room_has_required_profiles,
 )
 from app.models.teacher import Teacher
+from app.services.teacher_conditions import (
+    load_teacher_conditions, room_allowed, time_allowed, condition_issues,
+    entrance_distances, entrance_cost,
+)
+from app.services.lesson_times import LESSON_PAIRS
+from app.services.weekly_validation import validate_weekly_entries
+from types import SimpleNamespace
+
 
 @dataclass
 class ScheduleItem:
@@ -207,9 +215,6 @@ def _check_teacher_transitions(
     for previous, current in zip(
         teacher_entries, teacher_entries[1:]
     ):
-        if previous.id != changed_entry.id and current.id != changed_entry.id:
-            continue
-
         if _transition_minutes(
             db, previous, current, lessons, rooms
         ) is None:
@@ -233,12 +238,70 @@ def _is_sports_entry(entry, rooms, requirements) -> bool:
 
 
 
+def _sports_position_valid(entries, lessons, requirements, participants):
+    for sport in entries:
+        requirement = requirements.get(sport.lesson_id)
+        if requirement is None or requirement.room_type != "gym":
+            continue
+        for member in participants[sport.lesson_id]:
+            others = [entry for entry in entries if entry.id != sport.id
+                      and entry.weekday == sport.weekday
+                      and any(x["group_id"] == member["group_id"] for x in participants[entry.lesson_id])]
+            if any(x.end_time <= sport.start_time for x in others) and any(x.start_time >= sport.end_time for x in others):
+                return False
+    return True
+
+
+def _repair_teacher_conditions(db, entries, rooms_list, rooms, lessons, requirements,
+                               participants, teachers, distances, teacher_id):
+    room_profiles, lesson_profiles = load_equipment_profiles(db)
+    for entry in entries:
+        lesson = lessons[entry.lesson_id]
+        teacher = teachers.get(lesson.teacher_id)
+        if teacher_id is not None and teacher_id != lesson.teacher_id:
+            continue
+        if room_allowed(rooms[entry.room_id], teacher) and time_allowed(entry.start_time, teacher):
+            continue
+        requirement = requirements.get(lesson.id)
+        students = get_lesson_students_count(participants[lesson.id])
+        if requirement and requirement.room_type == "gym":
+            candidates = [rooms[entry.room_id]]
+        else:
+            candidates = [room for room in rooms_list
+                          if _room_fits(room, requirement, students)
+                          and room_has_required_profiles(room.id, lesson.id, room_profiles, lesson_profiles)]
+        candidates = [room for room in candidates if room_allowed(room, teacher)]
+        candidates.sort(key=lambda room: (entrance_cost(room.id, teacher, distances), room.id != entry.room_id, room.id))
+        old = (entry.room_id, entry.start_time, entry.end_time)
+        slots = [(start, end) for _, start, end in LESSON_PAIRS if time_allowed(start, teacher)]
+        slots.sort(key=lambda slot: (slot != old[1:], slot[0]))
+        found = False
+        for start, end in slots:
+            entry.start_time, entry.end_time = start, end
+            for room in candidates:
+                entry.room_id = room.id
+                if _has_schedule_conflict(room, entry, entries, lessons, participants):
+                    continue
+                if not _check_teacher_transitions(db, entries, entry, lessons, rooms):
+                    continue
+                if not _sports_position_valid(entries, lessons, requirements, participants):
+                    continue
+                found = True
+                break
+            if found:
+                break
+        if not found:
+            entry.room_id, entry.start_time, entry.end_time = old
+
+
 def _optimize_entries(
     db, entries, rooms_list, rooms, lessons, requirements, participants,
     teacher_id: int | None = None,
 ):
     """Optimize eligible entries while retaining all conflict checks."""
     all_entries = entries
+    teachers = load_teacher_conditions(db)
+    distances = entrance_distances(db)
 
     active_entries = [
         entry
@@ -257,6 +320,12 @@ def _optimize_entries(
 
     if current_total is None:
         return
+
+    def preference_total():
+        return sum(entrance_cost(entry.room_id, teachers.get(lessons[entry.lesson_id].teacher_id), distances)
+                   for entry in active_entries)
+
+    current_preference = preference_total()
 
 
     room_profiles, lesson_profiles = load_equipment_profiles(db)
@@ -277,6 +346,7 @@ def _optimize_entries(
             for room in rooms_list
             if room.id != entry.room_id
             and _room_fits(room, requirement, students_count)
+            and room_allowed(room, teachers.get(lesson.teacher_id))
             and room_has_required_profiles(
                 room.id,
                 entry.lesson_id,
@@ -285,6 +355,7 @@ def _optimize_entries(
             )
         ]
 
+        candidates.sort(key=lambda room: (entrance_cost(room.id, teachers.get(lesson.teacher_id), distances), room.id))
         for candidate in candidates:
             if _has_schedule_conflict(
                 candidate, entry, all_entries, lessons, participants
@@ -305,7 +376,9 @@ def _optimize_entries(
                 active_entries, lessons, rooms, db
             )
 
-            if new_total is not None and new_total < current_total:
+            new_preference = preference_total()
+            if new_total is not None and (new_preference, new_total) < (current_preference, current_total):
+                current_preference = new_preference
                 current_total = new_total
                 break
 
@@ -348,9 +421,7 @@ def _preview_optimization(
         for item in db_entries
     ]
 
-    original_room_ids = {
-        item.id: item.room_id for item in entries
-    }
+    originals = {item.id: (item.room_id, item.start_time, item.end_time) for item in entries}
 
     rooms_list = db.query(Room).order_by(Room.id).all()
     rooms = {room.id: room for room in rooms_list}
@@ -403,6 +474,11 @@ def _preview_optimization(
         original_entries, lessons, rooms, db
     )
 
+    teachers = load_teacher_conditions(db)
+    distances = entrance_distances(db)
+    _repair_teacher_conditions(db, all_entries, rooms_list, rooms, lessons, requirements,
+                               participants, teachers, distances, teacher_id)
+
     # 2. Оптимизируем копии расписания.
     _optimize_entries(
         db=db,
@@ -449,11 +525,11 @@ def _preview_optimization(
     # 4. Формируем список изменений аудиторий.
     changes = []
 
-    for entry in entries:
-        old_room_id = original_room_ids[entry.id]
+    for entry in all_entries:
+        old_room_id, old_start, old_end = originals[entry.id]
         new_room_id = entry.room_id
 
-        if old_room_id == new_room_id:
+        if (old_room_id, old_start, old_end) == (new_room_id, entry.start_time, entry.end_time):
             continue
 
         changes.append({
@@ -462,6 +538,10 @@ def _preview_optimization(
             "weekday": entry.weekday,
             "start_time": entry.start_time.strftime("%H:%M"),
             "end_time": entry.end_time.strftime("%H:%M"),
+            "old_start_time": old_start.strftime("%H:%M"),
+            "old_end_time": old_end.strftime("%H:%M"),
+            "new_start_time": entry.start_time.strftime("%H:%M"),
+            "new_end_time": entry.end_time.strftime("%H:%M"),
             "old_room_id": old_room_id,
             "old_room_name": rooms[old_room_id].name,
             "new_room_id": new_room_id,
@@ -474,12 +554,25 @@ def _preview_optimization(
     )
 
     time_saved = (
-        max(0, before_total - after_total)
+        before_total - after_total
         if before_total is not None and after_total is not None
         else None
     )
 
+    issues = condition_issues(all_entries, lessons, rooms, teachers)
+    if not issues:
+        try:
+            validate_weekly_entries(db, [SimpleNamespace(**vars(entry), week_type=week_type) for entry in all_entries])
+        except ValueError as exc:
+            issues.append({"entry_id": None, "teacher_id": None, "reason": str(exc)})
+    warnings = []
+    if any(teacher.prefer_near_entrance for teacher in teachers.values()) and not distances:
+        warnings.append("Нет маршрутов от входа: предпочтение близости сейчас не учитывается.")
+
     return {
+        "constraint_issues": issues,
+        "warnings": warnings,
+        "can_apply": not issues and not unknown_routes,
         "changes": changes,
         "changes_count": len(changes),
         "transition_time_before": before_total,
