@@ -27,6 +27,7 @@ from app.services.lesson_participants import (
 )
 from app.services.lesson_times import LESSON_PAIRS
 from app.services.weekly_validation import validate_weekly_entries
+from app.services.teacher_conditions import load_teacher_conditions, room_allowed, time_allowed, entrance_distances, entrance_cost
 
 
 def minutes(value):
@@ -205,6 +206,8 @@ def generate_weekly_preview(
         if requirements[lesson_id].room_type == "gym"
     }
 
+    teachers = load_teacher_conditions(db)
+    distances_from_entrance = entrance_distances(db)
     candidates = {}
     for lesson in new_lessons:
         requirement = requirements[lesson.id]
@@ -215,6 +218,8 @@ def generate_weekly_preview(
         suitable = []
 
         for room in rooms.values():
+            if not room_allowed(room, teachers.get(lesson.teacher_id)):
+                continue
             if lesson.id in sports:
                 if room.room_type != "gym":
                     continue
@@ -355,6 +360,7 @@ def generate_weekly_preview(
                 (day, number, start, end)
                 for day in range(6)
                 for number, start, end in LESSON_PAIRS
+                if time_allowed(start, teachers.get(lessons[lesson_id].teacher_id))
             ]
             rng.shuffle(slots)
 
@@ -368,6 +374,7 @@ def generate_weekly_preview(
             for day, number, start, end in slots:
                 room_ids = candidates[lesson_id].copy()
                 rng.shuffle(room_ids)
+                room_ids.sort(key=lambda room_id: entrance_cost(room_id, teachers.get(lessons[lesson_id].teacher_id), distances_from_entrance))
                 for room_id in room_ids:
                     entry = SimpleNamespace(
                         id=-(len(generated) + 1),
