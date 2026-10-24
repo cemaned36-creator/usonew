@@ -18,7 +18,8 @@ import {
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
-type Teacher = { id: number; name: string; email?: string | null };
+type Conditions = { earliest_start_pair: number; max_floor: number | null; prefer_near_entrance: boolean };
+type Teacher = Conditions & { id: number; name: string; email?: string | null };
 type Lesson = { id: number; teacher_id: number; subject_id: number; group_id: number };
 type NamedItem = { id: number; name: string; students_count?: number };
 
@@ -31,6 +32,8 @@ export default function TeachersPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileTeacherId, setProfileTeacherId] = useState<number | null>(null);
   const [profileRole, setProfileRole] = useState<"admin" | "teacher">("admin");
 
   useEffect(() => {
@@ -40,10 +43,13 @@ export default function TeachersPage() {
         const profile = JSON.parse(savedProfile);
         if (profile?.role === "admin" || profile?.role === "teacher") {
           setProfileRole(profile.role);
+          setProfileTeacherId(Number(profile.teacherId) || null);
         }
       }
     } catch {
       localStorage.removeItem("uso-user-profile");
+    } finally {
+      setProfileLoaded(true);
     }
   }, []);
 
@@ -171,6 +177,11 @@ export default function TeachersPage() {
 
                       {expanded && (
                         <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-5 sm:px-6">
+                          <TeacherConditionsForm
+                            teacher={teacher}
+                            editable={profileLoaded && (profileRole === "admin" || profileTeacherId === teacher.id)}
+                            onSaved={(conditions) => setTeachers((items) => items.map((item) => item.id === teacher.id ? { ...item, ...conditions } : item))}
+                          />
                           {teacherLessons.length === 0 ? (
                             <p className="text-sm text-slate-500">За этим преподавателем пока не закреплены дисциплины и группы.</p>
                           ) : (
@@ -221,4 +232,64 @@ function NavItem({ href, label, icon, active = false }: { href: string; label: s
       {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />}
     </Link>
   );
+}
+
+
+function TeacherConditionsForm({ teacher, editable, onSaved }: {
+  teacher: Teacher; editable: boolean; onSaved: (value: Conditions) => void;
+}) {
+  const [draft, setDraft] = useState<Conditions>({
+    earliest_start_pair: teacher.earliest_start_pair ?? 1,
+    max_floor: teacher.max_floor ?? null,
+    prefer_near_entrance: teacher.prefer_near_entrance ?? false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [failed, setFailed] = useState(false);
+  const field = "mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm disabled:opacity-60";
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editable || saving) return;
+    setSaving(true); setMessage(""); setFailed(false);
+    try {
+      const response = await fetch(`${API}/teachers/${teacher.id}/conditions`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Не удалось сохранить условия.");
+      onSaved(draft);
+      setMessage(result.affected_entries
+        ? `Условия сохранены. В текущем расписании ${result.affected_entries} занятий нарушают ограничения. Выполните оптимизацию обеих недель и проверьте результат.`
+        : "Условия сохранены. Они будут учтены при следующем составлении и оптимизации расписания.");
+    } catch (error) {
+      setFailed(true); setMessage(error instanceof Error ? error.message : "Ошибка сохранения.");
+    } finally { setSaving(false); }
+  }
+  return <form onSubmit={save} className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+    <h3 className="text-sm font-semibold text-slate-900">Условия расписания</h3>
+    <p className="mt-1 text-xs leading-5 text-slate-500">Действуют каждый учебный день, на обеих неделях. Сохранение условий не изменяет занятия автоматически.</p>
+    <fieldset disabled={!editable || saving} className="mt-4 space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-medium">Начинать занятия не раньше
+          <select value={draft.earliest_start_pair} onChange={(event) => setDraft({ ...draft, earliest_start_pair: Number(event.target.value) })} className={field}>
+            <option value={1}>1-й пары — 08:30</option><option value={2}>2-й пары — 10:15</option><option value={3}>3-й пары — 12:00</option>
+          </select>
+        </label>
+        <label className="text-sm font-medium">Максимальный этаж
+          <select value={draft.max_floor ?? ""} onChange={(event) => setDraft({ ...draft, max_floor: event.target.value ? Number(event.target.value) : null })} className={field}>
+            <option value="">Без ограничения</option><option value={1}>Не выше 1-го этажа</option><option value={2}>Не выше 2-го этажа</option><option value={3}>Не выше 3-го этажа</option><option value={4}>Не выше 4-го этажа</option>
+          </select>
+        </label>
+      </div>
+      <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 h-4 w-4" checked={draft.prefer_near_entrance} onChange={(event) => setDraft({ ...draft, prefer_near_entrance: event.target.checked })} />
+        <span>Предпочитать аудитории ближе ко входу<span className="mt-1 block text-xs leading-5 text-slate-500">Вход у охраны корпуса Б. Среди подходящих аудиторий выбираются ближайшие по демонстрационным расстояниям. Переходы между парами могут стать длиннее.</span></span>
+      </label>
+      <p className="text-xs leading-5 text-slate-500">Время начала и этаж — обязательные ограничения. Если подходящей аудитории или свободного времени нет, система покажет причину. Оптимизация переносит ранние занятия на свободные пары того же дня; при неудаче потребуется пересоставить расписание.</p>
+      {editable && <div className="flex flex-wrap gap-3">
+        <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{saving ? "Сохраняем…" : "Сохранить условия"}</button>
+        <button type="button" onClick={() => { setDraft({ earliest_start_pair: 1, max_floor: null, prefer_near_entrance: false }); setMessage("Ограничения сброшены в форме. Нажмите «Сохранить условия»."); setFailed(false); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">Сбросить</button>
+      </div>}
+    </fieldset>
+    {message && <p role={failed ? "alert" : "status"} className={`mt-3 text-sm ${failed ? "text-red-700" : "text-slate-700"}`}>{message}</p>}
+  </form>;
 }
