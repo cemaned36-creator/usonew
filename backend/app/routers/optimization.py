@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from datetime import time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -41,6 +41,10 @@ class OptimizationChange(BaseModel):
     entry_id: int
     old_room_id: int
     new_room_id: int
+    old_start_time: str | None = None
+    old_end_time: str | None = None
+    new_start_time: str | None = None
+    new_end_time: str | None = None
 
 
 class OptimizationApplyRequest(BaseModel):
@@ -104,7 +108,7 @@ def apply_optimization(
         # Keep the schedule unchanged during recalculation and saving.
         db.execute(text("SET LOCAL lock_timeout = '5s'"))
         db.execute(text("""
-            LOCK TABLE weekly_schedule_entries
+            LOCK TABLE weekly_schedule_entries, teachers
             IN SHARE ROW EXCLUSIVE MODE
         """))
         if (
@@ -121,6 +125,8 @@ def apply_optimization(
             week_type=payload.week_type,
             teacher_id=payload.teacher_id,
         )
+        if not current_preview["can_apply"]:
+            raise HTTPException(409, "Условия преподавателей или ограничения расписания не выполнены. Пересчитайте план.")
         expected = {
             item["entry_id"]: item
             for item in current_preview["changes"]
@@ -147,6 +153,8 @@ def apply_optimization(
             if (
                 item.old_room_id != fresh["old_room_id"]
                 or item.new_room_id != fresh["new_room_id"]
+                or any(getattr(item, key) != fresh[key] for key in
+                       ("old_start_time", "old_end_time", "new_start_time", "new_end_time"))
             ):
                 raise HTTPException(
                     status_code=409,
@@ -234,11 +242,8 @@ def apply_optimization(
             )
 
             if (
-                not _room_fits(
-                    target_room,
-                    requirement,
-                    students_count,
-                )
+                not (requirement and requirement.room_type == "gym" and target_room.room_type == "gym")
+                and not _room_fits(target_room, requirement, students_count)
                 or not room_has_required_profiles(
                     target_room.id,
                     entry.lesson_id,
@@ -255,6 +260,8 @@ def apply_optimization(
                 )
 
             entry.room_id = change.new_room_id
+            entry.start_time = time.fromisoformat(expected[entry_id]["new_start_time"])
+            entry.end_time = time.fromisoformat(expected[entry_id]["new_end_time"])
 
         # Проверяем занятость аудиторий, преподавателей и групп для
         # всего результирующего расписания.
@@ -321,6 +328,8 @@ def apply_optimization(
 
         for entry_id, change in submitted.items():
             orm_by_id[entry_id].room_id = change.new_room_id
+            orm_by_id[entry_id].start_time = entries_by_id[entry_id].start_time
+            orm_by_id[entry_id].end_time = entries_by_id[entry_id].end_time
 
         db.commit()
 

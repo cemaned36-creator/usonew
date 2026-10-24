@@ -18,7 +18,10 @@ from app.services.lesson_participants import (
 from app.services.lesson_times import get_lesson_pair
 
 
-def validate_weekly_entries(db: Session, entries) -> None:
+from app.services.teacher_conditions import load_teacher_conditions, condition_issues
+
+
+def validate_weekly_entries(db: Session, entries, *, enforce_teacher_conditions=True) -> None:
     """
     Validate supplied weekly entries without writing to the database.
 
@@ -133,6 +136,11 @@ def validate_weekly_entries(db: Session, entries) -> None:
 
         for member in participants[lesson.id]:
             by_group_day[(*day, member["group_id"])].append(entry)
+
+    if enforce_teacher_conditions:
+        issues = condition_issues(entries, lessons, rooms, load_teacher_conditions(db))
+        if issues:
+            raise ValueError(issues[0]["reason"])
 
     # Check room, teacher and student overlaps.
     for day_entries in by_day.values():

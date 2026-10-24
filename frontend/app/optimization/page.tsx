@@ -65,6 +65,10 @@ type Change = {
   weekday: number;
   start_time: string;
   end_time: string;
+  old_start_time: string;
+  old_end_time: string;
+  new_start_time: string;
+  new_end_time: string;
   old_room_id: number;
   old_room_name: string;
   new_room_id: number;
@@ -76,6 +80,9 @@ type UnknownRoute = {
   reason: string;
 };
 type OptimizationResult = {
+  can_apply: boolean;
+  constraint_issues: { entry_id: number | null; teacher_id: number | null; reason: string }[];
+  warnings: string[];
   changes: Change[];
   changes_count: number;
   transition_time_before: number | null;
@@ -169,6 +176,8 @@ export default function OptimizationPage() {
       const change = changesByEntry.get(entry.id);
       return {
         ...entry,
+        start_time: change?.new_start_time ?? entry.start_time,
+        end_time: change?.new_end_time ?? entry.end_time,
         displayRoomId: change ? change.new_room_id : entry.room_id,
         displayRoomName: change ? change.new_room_name : entry.room_name,
       };
@@ -213,8 +222,8 @@ export default function OptimizationPage() {
       setMessage({
         kind: "success",
         text: data.changes_count
-          ? `Расчёт завершён. Предлагается изменить аудиторий: ${data.changes_count}.`
-          : "Расчёт завершён: изменения аудиторий не требуются.",
+          ? `Расчёт завершён. Предлагается изменить занятий: ${data.changes_count}.`
+          : "Расчёт завершён: изменения не требуются.",
       });
     } catch (error) {
       setResult(null);
@@ -228,7 +237,7 @@ export default function OptimizationPage() {
   }
 
   async function applyOptimization() {
-    if (!result || result.changes.length === 0) return;
+    if (!result || !result.can_apply || result.changes.length === 0) return;
     const expectedTeacherId = selectedTeacherId
       ? Number(selectedTeacherId)
       : null;
@@ -258,6 +267,10 @@ export default function OptimizationPage() {
             entry_id: change.entry_id,
             old_room_id: change.old_room_id,
             new_room_id: change.new_room_id,
+            old_start_time: change.old_start_time,
+            old_end_time: change.old_end_time,
+            new_start_time: change.new_start_time,
+            new_end_time: change.new_end_time,
           })),
         }),
       });
@@ -274,7 +287,7 @@ export default function OptimizationPage() {
       setConfirmStep(0);
       setMessage({
         kind: "success",
-        text: `Расписание сохранено в базе данных. Изменено аудиторий: ${data.saved_count}.`,
+        text: `Расписание сохранено в базе данных. Изменено занятий: ${data.saved_count}.`,
       });
     } catch (error) {
       setConfirmStep(0);
@@ -324,7 +337,7 @@ export default function OptimizationPage() {
           <div>
             <h2 className="font-semibold">{optimized ? "После оптимизации" : "Текущее расписание"}</h2>
             <p className="mt-0.5 text-xs text-slate-400">
-              {optimized ? "Предлагаемые аудитории" : "Существующие назначения"}
+              {optimized ? "Предлагаемые назначения" : "Существующие назначения"}
             </p>
           </div>
         </div>
@@ -374,7 +387,7 @@ export default function OptimizationPage() {
                               {highlighted && change && (
                                 <span className="text-[11px] font-medium text-emerald-700">
                                   <ArrowRight className="mr-1 inline h-3 w-3" />
-                                  {change.old_room_name} → {change.new_room_name}
+                                  {change.old_room_name} → {change.new_room_name}{change.old_start_time !== change.new_start_time && ` · ${change.old_start_time} → ${change.new_start_time}`}
                                 </span>
                               )}
                             </div>
@@ -507,7 +520,7 @@ export default function OptimizationPage() {
                 </select>
 
                 <p className="mt-2 text-xs text-slate-500">
-                  Меняются аудитории выбранного преподавателя в корпусе Б.
+                  Учитываются условия выбранного преподавателя: время начала, этаж и близость ко входу.
                   Занятость помещений проверяется по всему расписанию.
                 </p>
               </div>
@@ -563,7 +576,7 @@ export default function OptimizationPage() {
                       <div className="grid gap-3 sm:grid-cols-3">
                         <MetricCard label="До оптимизации" value={result.transition_time_before == null ? "Не рассчитано" : `${result.transition_time_before} мин`} />
                         <MetricCard label="После оптимизации" value={result.transition_time_after == null ? "Не рассчитано" : `${result.transition_time_after} мин`} />
-                        <MetricCard label="Экономия" value={result.time_saved == null ? "—" : `${result.time_saved} мин`} highlight />
+                        <MetricCard label={result.time_saved != null && result.time_saved < 0 ? "Рост времени переходов" : "Экономия"} value={result.time_saved == null ? "—" : `${Math.abs(result.time_saved)} мин`} highlight />
                       </div>
                       <div className="mt-4 flex flex-wrap gap-3 text-sm">
                         <span className="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Изменений: <strong>{result.changes_count}</strong></span>
@@ -571,6 +584,13 @@ export default function OptimizationPage() {
                           Предупреждений о переходах: <strong>{result.unknown_routes.length}</strong>
                         </span>
                       </div>
+                      {(result.constraint_issues ?? []).length > 0 && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                        <h3 className="font-semibold">Не удалось выполнить все условия</h3>
+                        <p className="mt-1">Сохранение отключено. Попробуйте оптимизацию всех преподавателей, пересоставление расписания или изменение условий.</p>
+                        <ul className="mt-2 space-y-1">{result.constraint_issues.map((issue, index) => <li key={index}>{issue.entry_id ? `Запись #${issue.entry_id}: ` : ""}{issue.reason}</li>)}</ul>
+                      </div>}
+                      {(result.warnings ?? []).map((warning) => <p key={warning} className="mt-3 text-sm text-amber-800">{warning}</p>)}
+                      {result.time_saved != null && result.time_saved < 0 && <p className="mt-3 text-sm text-amber-800">Выполнение условий преподавателей имеет приоритет над сокращением переходов.</p>}
                       {result.unknown_routes.length > 0 && (
                         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
                           <h3 className="text-sm font-semibold text-amber-900">Требуют внимания</h3>
@@ -590,12 +610,12 @@ export default function OptimizationPage() {
                         <div>
                           <h2 className="font-semibold">Применить изменения</h2>
                           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-                            Сохранение изменит аудитории в базе данных. Перед записью сервер повторно проверит актуальность плана и ограничения расписания.
+                            Сохранение изменит аудитории и, при необходимости, время занятий в пределах того же дня. Перед записью сервер повторно проверит актуальность плана и ограничения расписания.
                           </p>
                         </div>
                         <button
                           onClick={() => setConfirmStep(1)}
-                          disabled={!result.changes.length || result.unknown_routes.length > 0 || saving}
+                          disabled={!result.can_apply || !result.changes.length || result.unknown_routes.length > 0 || saving}
                           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <ShieldCheck className="h-4 w-4" />
@@ -628,13 +648,13 @@ export default function OptimizationPage() {
               <>
                 <h2 id="confirm-title" className="mt-4 text-lg font-semibold">Проверить изменения?</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Будет изменено назначение аудитории для {result.changes.length} занятий. Это пока первый этап подтверждения; данные ещё не сохранены.
+                  Будут изменены аудитории и/или время для {result.changes.length} занятий. Это пока первый этап подтверждения; данные ещё не сохранены.
                 </p>
                 <div className="mt-4 max-h-48 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3">
                   {result.changes.map((change) => (
                     <div key={change.entry_id} className="flex items-start justify-between gap-3 text-sm">
                       <span className="text-slate-600">Занятие #{change.lesson_id}, {change.start_time}</span>
-                      <span className="shrink-0 font-semibold text-emerald-700">{change.old_room_name} → {change.new_room_name}</span>
+                      <span className="shrink-0 font-semibold text-emerald-700">{change.old_room_name} → {change.new_room_name}{change.old_start_time !== change.new_start_time && ` · ${change.old_start_time} → ${change.new_start_time}`}</span>
                     </div>
                   ))}
                 </div>
@@ -647,7 +667,7 @@ export default function OptimizationPage() {
               <>
                 <h2 id="confirm-title" className="mt-4 text-lg font-semibold">Окончательно сохранить расписание?</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Это действие запишет новые аудитории в базу данных. Сервер проверит, что расписание не изменилось с момента расчёта. Продолжить?
+                  Это действие сохранит новые аудитории и время занятий в базе данных. Сервер проверит, что расписание не изменилось с момента расчёта. Продолжить?
                 </p>
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button onClick={() => setConfirmStep(0)} disabled={saving} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Нет, отменить</button>
