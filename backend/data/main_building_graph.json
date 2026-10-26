@@ -1,0 +1,2340 @@
+{
+  "nodes": {
+    "1:A": {
+      "floor": 1,
+      "x": 0,
+      "y": 0,
+      "kind": "stair"
+    },
+    "1:J": {
+      "floor": 1,
+      "x": 79,
+      "y": 0,
+      "kind": "junction"
+    },
+    "1:B": {
+      "floor": 1,
+      "x": 158,
+      "y": 0,
+      "kind": "stair"
+    },
+    "1:C": {
+      "floor": 1,
+      "x": 79,
+      "y": 6,
+      "kind": "stair"
+    },
+    "1:D": {
+      "floor": 1,
+      "x": 0,
+      "y": 50,
+      "kind": "stair"
+    },
+    "1:E": {
+      "floor": 1,
+      "x": 158,
+      "y": 50,
+      "kind": "stair"
+    },
+    "1:F": {
+      "floor": 1,
+      "x": 0,
+      "y": 95,
+      "kind": "stair"
+    },
+    "1:G": {
+      "floor": 1,
+      "x": 158,
+      "y": 89,
+      "kind": "stair"
+    },
+    "1:K": {
+      "floor": 1,
+      "x": 158,
+      "y": 95,
+      "kind": "junction"
+    },
+    "1:H": {
+      "floor": 1,
+      "x": 58,
+      "y": 95,
+      "kind": "stair"
+    },
+    "1:I": {
+      "floor": 1,
+      "x": 112,
+      "y": 95,
+      "kind": "stair"
+    },
+    "1:R": {
+      "floor": 1,
+      "x": 100,
+      "y": 95,
+      "kind": "junction"
+    },
+    "1:Lu": {
+      "floor": 1,
+      "x": 0,
+      "y": 52,
+      "kind": "dead_end"
+    },
+    "1:Ld": {
+      "floor": 1,
+      "x": 0,
+      "y": 60,
+      "kind": "dead_end"
+    },
+    "1:Ru": {
+      "floor": 1,
+      "x": 158,
+      "y": 52,
+      "kind": "dead_end"
+    },
+    "1:Rd": {
+      "floor": 1,
+      "x": 158,
+      "y": 60,
+      "kind": "dead_end"
+    },
+    "2:A": {
+      "floor": 2,
+      "x": 0,
+      "y": 0,
+      "kind": "stair"
+    },
+    "2:J": {
+      "floor": 2,
+      "x": 79,
+      "y": 0,
+      "kind": "junction"
+    },
+    "2:B": {
+      "floor": 2,
+      "x": 158,
+      "y": 0,
+      "kind": "stair"
+    },
+    "2:C": {
+      "floor": 2,
+      "x": 79,
+      "y": 6,
+      "kind": "stair"
+    },
+    "2:D": {
+      "floor": 2,
+      "x": 0,
+      "y": 50,
+      "kind": "stair"
+    },
+    "2:E": {
+      "floor": 2,
+      "x": 158,
+      "y": 50,
+      "kind": "stair"
+    },
+    "2:F": {
+      "floor": 2,
+      "x": 0,
+      "y": 95,
+      "kind": "stair"
+    },
+    "2:G": {
+      "floor": 2,
+      "x": 158,
+      "y": 89,
+      "kind": "stair"
+    },
+    "2:K": {
+      "floor": 2,
+      "x": 158,
+      "y": 95,
+      "kind": "junction"
+    },
+    "2:H": {
+      "floor": 2,
+      "x": 58,
+      "y": 95,
+      "kind": "stair"
+    },
+    "2:I": {
+      "floor": 2,
+      "x": 112,
+      "y": 95,
+      "kind": "stair"
+    },
+    "2:R": {
+      "floor": 2,
+      "x": 100,
+      "y": 95,
+      "kind": "junction"
+    },
+    "2:Ru": {
+      "floor": 2,
+      "x": 158,
+      "y": 52,
+      "kind": "dead_end"
+    },
+    "2:Rd": {
+      "floor": 2,
+      "x": 158,
+      "y": 60,
+      "kind": "dead_end"
+    },
+    "3:A": {
+      "floor": 3,
+      "x": 0,
+      "y": 0,
+      "kind": "stair"
+    },
+    "3:J": {
+      "floor": 3,
+      "x": 79,
+      "y": 0,
+      "kind": "junction"
+    },
+    "3:B": {
+      "floor": 3,
+      "x": 158,
+      "y": 0,
+      "kind": "stair"
+    },
+    "3:C": {
+      "floor": 3,
+      "x": 79,
+      "y": 6,
+      "kind": "stair"
+    },
+    "3:D": {
+      "floor": 3,
+      "x": 0,
+      "y": 50,
+      "kind": "stair"
+    },
+    "3:E": {
+      "floor": 3,
+      "x": 158,
+      "y": 50,
+      "kind": "stair"
+    },
+    "3:F": {
+      "floor": 3,
+      "x": 0,
+      "y": 95,
+      "kind": "stair"
+    },
+    "3:G": {
+      "floor": 3,
+      "x": 158,
+      "y": 89,
+      "kind": "stair"
+    },
+    "3:K": {
+      "floor": 3,
+      "x": 158,
+      "y": 95,
+      "kind": "junction"
+    },
+    "3:H": {
+      "floor": 3,
+      "x": 58,
+      "y": 95,
+      "kind": "stair"
+    },
+    "3:I": {
+      "floor": 3,
+      "x": 112,
+      "y": 95,
+      "kind": "stair"
+    },
+    "3:R": {
+      "floor": 3,
+      "x": 100,
+      "y": 95,
+      "kind": "junction"
+    },
+    "4:A": {
+      "floor": 4,
+      "x": 0,
+      "y": 0,
+      "kind": "stair"
+    },
+    "4:J": {
+      "floor": 4,
+      "x": 79,
+      "y": 0,
+      "kind": "junction"
+    },
+    "4:B": {
+      "floor": 4,
+      "x": 158,
+      "y": 0,
+      "kind": "stair"
+    },
+    "4:C": {
+      "floor": 4,
+      "x": 79,
+      "y": 6,
+      "kind": "stair"
+    },
+    "4:D": {
+      "floor": 4,
+      "x": 0,
+      "y": 50,
+      "kind": "stair"
+    },
+    "4:E": {
+      "floor": 4,
+      "x": 158,
+      "y": 50,
+      "kind": "stair"
+    },
+    "4:F": {
+      "floor": 4,
+      "x": 0,
+      "y": 95,
+      "kind": "stair"
+    },
+    "4:G": {
+      "floor": 4,
+      "x": 158,
+      "y": 89,
+      "kind": "stair"
+    },
+    "4:K": {
+      "floor": 4,
+      "x": 158,
+      "y": 95,
+      "kind": "junction"
+    },
+    "4:H": {
+      "floor": 4,
+      "x": 58,
+      "y": 95,
+      "kind": "stair"
+    },
+    "4:I": {
+      "floor": 4,
+      "x": 112,
+      "y": 95,
+      "kind": "stair"
+    },
+    "4:R": {
+      "floor": 4,
+      "x": 100,
+      "y": 95,
+      "kind": "junction"
+    },
+    "room:13": {
+      "floor": 1,
+      "x": 10.6367,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 13
+    },
+    "room:14": {
+      "floor": 1,
+      "x": 0,
+      "y": 79.61,
+      "kind": "room_projection",
+      "room_id": 14
+    },
+    "room:15": {
+      "floor": 1,
+      "x": 158,
+      "y": 26.41,
+      "kind": "room_projection",
+      "room_id": 15
+    },
+    "room:16": {
+      "floor": 2,
+      "x": 0,
+      "y": 74.1,
+      "kind": "room_projection",
+      "room_id": 16
+    },
+    "room:17": {
+      "floor": 2,
+      "x": 0,
+      "y": 66.69,
+      "kind": "room_projection",
+      "room_id": 17
+    },
+    "room:18": {
+      "floor": 2,
+      "x": 0,
+      "y": 63.08,
+      "kind": "room_projection",
+      "room_id": 18
+    },
+    "room:19": {
+      "floor": 2,
+      "x": 0,
+      "y": 58.9,
+      "kind": "room_projection",
+      "room_id": 19
+    },
+    "room:20": {
+      "floor": 2,
+      "x": 0,
+      "y": 66.69,
+      "kind": "room_projection",
+      "room_id": 20
+    },
+    "room:21": {
+      "floor": 2,
+      "x": 0,
+      "y": 42.75,
+      "kind": "room_projection",
+      "room_id": 21
+    },
+    "room:22": {
+      "floor": 2,
+      "x": 19.9192,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 22
+    },
+    "room:23": {
+      "floor": 2,
+      "x": 128.6047,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 23
+    },
+    "room:24": {
+      "floor": 2,
+      "x": 158,
+      "y": 26.22,
+      "kind": "room_projection",
+      "room_id": 24
+    },
+    "room:25": {
+      "floor": 2,
+      "x": 158,
+      "y": 26.22,
+      "kind": "room_projection",
+      "room_id": 25
+    },
+    "room:26": {
+      "floor": 2,
+      "x": 158,
+      "y": 46.36,
+      "kind": "room_projection",
+      "room_id": 26
+    },
+    "room:27": {
+      "floor": 2,
+      "x": 158,
+      "y": 73.53,
+      "kind": "room_projection",
+      "room_id": 27
+    },
+    "room:28": {
+      "floor": 2,
+      "x": 126.3636,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 28
+    },
+    "room:29": {
+      "floor": 2,
+      "x": 158.0,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 29
+    },
+    "room:30": {
+      "floor": 2,
+      "x": 146.2828,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 30
+    },
+    "room:31": {
+      "floor": 2,
+      "x": 140.0337,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 31
+    },
+    "room:32": {
+      "floor": 2,
+      "x": 131.2458,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 32
+    },
+    "room:33": {
+      "floor": 2,
+      "x": 114.2559,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 33
+    },
+    "room:34": {
+      "floor": 2,
+      "x": 104.4916,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 34
+    },
+    "room:35": {
+      "floor": 3,
+      "x": 51.62,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 35
+    },
+    "room:36": {
+      "floor": 3,
+      "x": 8.12,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 36
+    },
+    "room:37": {
+      "floor": 3,
+      "x": 4.2533,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 37
+    },
+    "room:38": {
+      "floor": 3,
+      "x": 0,
+      "y": 67.45,
+      "kind": "room_projection",
+      "room_id": 38
+    },
+    "room:39": {
+      "floor": 3,
+      "x": 0,
+      "y": 74.29,
+      "kind": "room_projection",
+      "room_id": 39
+    },
+    "room:40": {
+      "floor": 3,
+      "x": 0,
+      "y": 65.93,
+      "kind": "room_projection",
+      "room_id": 40
+    },
+    "room:41": {
+      "floor": 3,
+      "x": 0,
+      "y": 13.68,
+      "kind": "room_projection",
+      "room_id": 41
+    },
+    "room:42": {
+      "floor": 3,
+      "x": 0,
+      "y": 17.48,
+      "kind": "room_projection",
+      "room_id": 42
+    },
+    "room:43": {
+      "floor": 3,
+      "x": 3.2796,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 43
+    },
+    "room:44": {
+      "floor": 3,
+      "x": 10.9963,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 44
+    },
+    "room:45": {
+      "floor": 3,
+      "x": 31.2527,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 45
+    },
+    "room:46": {
+      "floor": 3,
+      "x": 109.3846,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 46
+    },
+    "room:47": {
+      "floor": 3,
+      "x": 158,
+      "y": 11.97,
+      "kind": "room_projection",
+      "room_id": 47
+    },
+    "room:48": {
+      "floor": 3,
+      "x": 158,
+      "y": 40.85,
+      "kind": "room_projection",
+      "room_id": 48
+    },
+    "room:49": {
+      "floor": 3,
+      "x": 158,
+      "y": 72.77,
+      "kind": "room_projection",
+      "room_id": 49
+    },
+    "room:50": {
+      "floor": 3,
+      "x": 158,
+      "y": 81.51,
+      "kind": "room_projection",
+      "room_id": 50
+    },
+    "room:51": {
+      "floor": 3,
+      "x": 139.8516,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 51
+    },
+    "room:52": {
+      "floor": 3,
+      "x": 158.0,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 52
+    },
+    "room:53": {
+      "floor": 3,
+      "x": 109.1677,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 53
+    },
+    "room:54": {
+      "floor": 3,
+      "x": 152.2,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 54
+    },
+    "room:55": {
+      "floor": 3,
+      "x": 144.529,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 55
+    },
+    "room:56": {
+      "floor": 3,
+      "x": 140.7871,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 56
+    },
+    "room:57": {
+      "floor": 3,
+      "x": 106.7355,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 57
+    },
+    "room:58": {
+      "floor": 4,
+      "x": 51.6412,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 58
+    },
+    "room:59": {
+      "floor": 4,
+      "x": 43.5482,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 59
+    },
+    "room:60": {
+      "floor": 4,
+      "x": 17.9203,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 60
+    },
+    "room:61": {
+      "floor": 4,
+      "x": 29.9023,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 61
+    },
+    "room:62": {
+      "floor": 4,
+      "x": 53.2454,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 62
+    },
+    "room:63": {
+      "floor": 4,
+      "x": 2.1221,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 63
+    },
+    "room:64": {
+      "floor": 4,
+      "x": 64.2418,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 64
+    },
+    "room:65": {
+      "floor": 4,
+      "x": 33.3748,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 65
+    },
+    "room:66": {
+      "floor": 4,
+      "x": 45.5287,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 66
+    },
+    "room:67": {
+      "floor": 4,
+      "x": 67.5214,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 67
+    },
+    "room:68": {
+      "floor": 4,
+      "x": 94.7228,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 68
+    },
+    "room:69": {
+      "floor": 4,
+      "x": 106.105,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 69
+    },
+    "room:70": {
+      "floor": 4,
+      "x": 114.5934,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 70
+    },
+    "room:71": {
+      "floor": 4,
+      "x": 109.5775,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 71
+    },
+    "room:72": {
+      "floor": 4,
+      "x": 147.0037,
+      "y": 0,
+      "kind": "room_projection",
+      "room_id": 72
+    },
+    "room:73": {
+      "floor": 4,
+      "x": 158,
+      "y": 41.04,
+      "kind": "room_projection",
+      "room_id": 73
+    },
+    "room:74": {
+      "floor": 4,
+      "x": 158,
+      "y": 69.16,
+      "kind": "room_projection",
+      "room_id": 74
+    },
+    "room:75": {
+      "floor": 4,
+      "x": 158,
+      "y": 67.64,
+      "kind": "room_projection",
+      "room_id": 75
+    },
+    "room:76": {
+      "floor": 4,
+      "x": 153.8706,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 76
+    },
+    "room:77": {
+      "floor": 4,
+      "x": 140.7314,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 77
+    },
+    "room:78": {
+      "floor": 4,
+      "x": 132.4725,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 78
+    },
+    "room:79": {
+      "floor": 4,
+      "x": 116.5178,
+      "y": 95,
+      "kind": "room_projection",
+      "room_id": 79
+    }
+  },
+  "edges": [
+    {
+      "a": "1:A",
+      "b": "1:J",
+      "kind": "corridor",
+      "distance_m": 79,
+      "time_s": 79
+    },
+    {
+      "a": "1:J",
+      "b": "1:B",
+      "kind": "corridor",
+      "distance_m": 79,
+      "time_s": 79
+    },
+    {
+      "a": "1:J",
+      "b": "1:C",
+      "kind": "corridor",
+      "distance_m": 6,
+      "time_s": 6
+    },
+    {
+      "a": "1:A",
+      "b": "1:D",
+      "kind": "corridor",
+      "distance_m": 50,
+      "time_s": 50
+    },
+    {
+      "a": "1:D",
+      "b": "1:Lu",
+      "kind": "corridor",
+      "distance_m": 2,
+      "time_s": 2
+    },
+    {
+      "a": "1:Ld",
+      "b": "room:14",
+      "kind": "corridor",
+      "distance_m": 19.61,
+      "time_s": 19.61
+    },
+    {
+      "a": "room:14",
+      "b": "1:F",
+      "kind": "corridor",
+      "distance_m": 15.39,
+      "time_s": 15.39
+    },
+    {
+      "a": "1:B",
+      "b": "room:15",
+      "kind": "corridor",
+      "distance_m": 26.41,
+      "time_s": 26.41
+    },
+    {
+      "a": "room:15",
+      "b": "1:E",
+      "kind": "corridor",
+      "distance_m": 23.59,
+      "time_s": 23.59
+    },
+    {
+      "a": "1:E",
+      "b": "1:Ru",
+      "kind": "corridor",
+      "distance_m": 2,
+      "time_s": 2
+    },
+    {
+      "a": "1:Rd",
+      "b": "1:G",
+      "kind": "corridor",
+      "distance_m": 29,
+      "time_s": 29
+    },
+    {
+      "a": "1:G",
+      "b": "1:K",
+      "kind": "corridor",
+      "distance_m": 6,
+      "time_s": 6
+    },
+    {
+      "a": "1:F",
+      "b": "room:13",
+      "kind": "corridor",
+      "distance_m": 10.6367,
+      "time_s": 10.6367
+    },
+    {
+      "a": "room:13",
+      "b": "1:H",
+      "kind": "corridor",
+      "distance_m": 47.3633,
+      "time_s": 47.3633
+    },
+    {
+      "a": "1:K",
+      "b": "1:I",
+      "kind": "corridor",
+      "distance_m": 46,
+      "time_s": 46
+    },
+    {
+      "a": "1:I",
+      "b": "1:R",
+      "kind": "corridor",
+      "distance_m": 12,
+      "time_s": 12
+    },
+    {
+      "a": "2:A",
+      "b": "room:22",
+      "kind": "corridor",
+      "distance_m": 19.9192,
+      "time_s": 19.9192
+    },
+    {
+      "a": "room:22",
+      "b": "2:J",
+      "kind": "corridor",
+      "distance_m": 59.0808,
+      "time_s": 59.0808
+    },
+    {
+      "a": "2:J",
+      "b": "room:23",
+      "kind": "corridor",
+      "distance_m": 49.6047,
+      "time_s": 49.6047
+    },
+    {
+      "a": "room:23",
+      "b": "2:B",
+      "kind": "corridor",
+      "distance_m": 29.3953,
+      "time_s": 29.3953
+    },
+    {
+      "a": "2:J",
+      "b": "2:C",
+      "kind": "corridor",
+      "distance_m": 6,
+      "time_s": 6
+    },
+    {
+      "a": "2:A",
+      "b": "room:21",
+      "kind": "corridor",
+      "distance_m": 42.75,
+      "time_s": 42.75
+    },
+    {
+      "a": "room:21",
+      "b": "2:D",
+      "kind": "corridor",
+      "distance_m": 7.25,
+      "time_s": 7.25
+    },
+    {
+      "a": "2:D",
+      "b": "room:19",
+      "kind": "corridor",
+      "distance_m": 8.9,
+      "time_s": 8.9
+    },
+    {
+      "a": "room:19",
+      "b": "room:18",
+      "kind": "corridor",
+      "distance_m": 4.18,
+      "time_s": 4.18
+    },
+    {
+      "a": "room:18",
+      "b": "room:17",
+      "kind": "corridor",
+      "distance_m": 3.61,
+      "time_s": 3.61
+    },
+    {
+      "a": "room:17",
+      "b": "room:20",
+      "kind": "corridor",
+      "distance_m": 0.0,
+      "time_s": 0.0
+    },
+    {
+      "a": "room:20",
+      "b": "room:16",
+      "kind": "corridor",
+      "distance_m": 7.41,
+      "time_s": 7.41
+    },
+    {
+      "a": "room:16",
+      "b": "2:F",
+      "kind": "corridor",
+      "distance_m": 20.9,
+      "time_s": 20.9
+    },
+    {
+      "a": "2:B",
+      "b": "room:24",
+      "kind": "corridor",
+      "distance_m": 26.22,
+      "time_s": 26.22
+    },
+    {
+      "a": "room:24",
+      "b": "room:25",
+      "kind": "corridor",
+      "distance_m": 0.0,
+      "time_s": 0.0
+    },
+    {
+      "a": "room:25",
+      "b": "room:26",
+      "kind": "corridor",
+      "distance_m": 20.14,
+      "time_s": 20.14
+    },
+    {
+      "a": "room:26",
+      "b": "2:E",
+      "kind": "corridor",
+      "distance_m": 3.64,
+      "time_s": 3.64
+    },
+    {
+      "a": "2:E",
+      "b": "2:Ru",
+      "kind": "corridor",
+      "distance_m": 2,
+      "time_s": 2
+    },
+    {
+      "a": "2:Rd",
+      "b": "room:27",
+      "kind": "corridor",
+      "distance_m": 13.53,
+      "time_s": 13.53
+    },
+    {
+      "a": "room:27",
+      "b": "2:G",
+      "kind": "corridor",
+      "distance_m": 15.47,
+      "time_s": 15.47
+    },
+    {
+      "a": "2:G",
+      "b": "room:29",
+      "kind": "corridor",
+      "distance_m": 6.0,
+      "time_s": 6.0
+    },
+    {
+      "a": "room:29",
+      "b": "2:K",
+      "kind": "corridor",
+      "distance_m": 0.0,
+      "time_s": 0.0
+    },
+    {
+      "a": "2:F",
+      "b": "2:H",
+      "kind": "corridor",
+      "distance_m": 58,
+      "time_s": 58
+    },
+    {
+      "a": "2:K",
+      "b": "room:30",
+      "kind": "corridor",
+      "distance_m": 11.7172,
+      "time_s": 11.7172
+    },
+    {
+      "a": "room:30",
+      "b": "room:31",
+      "kind": "corridor",
+      "distance_m": 6.2491,
+      "time_s": 6.2491
+    },
+    {
+      "a": "room:31",
+      "b": "room:32",
+      "kind": "corridor",
+      "distance_m": 8.7879,
+      "time_s": 8.7879
+    },
+    {
+      "a": "room:32",
+      "b": "room:28",
+      "kind": "corridor",
+      "distance_m": 4.8822,
+      "time_s": 4.8822
+    },
+    {
+      "a": "room:28",
+      "b": "room:33",
+      "kind": "corridor",
+      "distance_m": 12.1077,
+      "time_s": 12.1077
+    },
+    {
+      "a": "room:33",
+      "b": "2:I",
+      "kind": "corridor",
+      "distance_m": 2.2559,
+      "time_s": 2.2559
+    },
+    {
+      "a": "2:I",
+      "b": "room:34",
+      "kind": "corridor",
+      "distance_m": 7.5084,
+      "time_s": 7.5084
+    },
+    {
+      "a": "room:34",
+      "b": "2:R",
+      "kind": "corridor",
+      "distance_m": 4.4916,
+      "time_s": 4.4916
+    },
+    {
+      "a": "3:A",
+      "b": "room:43",
+      "kind": "corridor",
+      "distance_m": 3.2796,
+      "time_s": 3.2796
+    },
+    {
+      "a": "room:43",
+      "b": "room:44",
+      "kind": "corridor",
+      "distance_m": 7.7167,
+      "time_s": 7.7167
+    },
+    {
+      "a": "room:44",
+      "b": "room:45",
+      "kind": "corridor",
+      "distance_m": 20.2564,
+      "time_s": 20.2564
+    },
+    {
+      "a": "room:45",
+      "b": "3:J",
+      "kind": "corridor",
+      "distance_m": 47.7473,
+      "time_s": 47.7473
+    },
+    {
+      "a": "3:J",
+      "b": "room:46",
+      "kind": "corridor",
+      "distance_m": 30.3846,
+      "time_s": 30.3846
+    },
+    {
+      "a": "room:46",
+      "b": "3:B",
+      "kind": "corridor",
+      "distance_m": 48.6154,
+      "time_s": 48.6154
+    },
+    {
+      "a": "3:J",
+      "b": "3:C",
+      "kind": "corridor",
+      "distance_m": 6,
+      "time_s": 6
+    },
+    {
+      "a": "3:A",
+      "b": "room:41",
+      "kind": "corridor",
+      "distance_m": 13.68,
+      "time_s": 13.68
+    },
+    {
+      "a": "room:41",
+      "b": "room:42",
+      "kind": "corridor",
+      "distance_m": 3.8,
+      "time_s": 3.8
+    },
+    {
+      "a": "room:42",
+      "b": "3:D",
+      "kind": "corridor",
+      "distance_m": 32.52,
+      "time_s": 32.52
+    },
+    {
+      "a": "3:D",
+      "b": "room:40",
+      "kind": "corridor",
+      "distance_m": 15.93,
+      "time_s": 15.93
+    },
+    {
+      "a": "room:40",
+      "b": "room:38",
+      "kind": "corridor",
+      "distance_m": 1.52,
+      "time_s": 1.52
+    },
+    {
+      "a": "room:38",
+      "b": "room:39",
+      "kind": "corridor",
+      "distance_m": 6.84,
+      "time_s": 6.84
+    },
+    {
+      "a": "room:39",
+      "b": "3:F",
+      "kind": "corridor",
+      "distance_m": 20.71,
+      "time_s": 20.71
+    },
+    {
+      "a": "3:B",
+      "b": "room:47",
+      "kind": "corridor",
+      "distance_m": 11.97,
+      "time_s": 11.97
+    },
+    {
+      "a": "room:47",
+      "b": "room:48",
+      "kind": "corridor",
+      "distance_m": 28.88,
+      "time_s": 28.88
+    },
+    {
+      "a": "room:48",
+      "b": "3:E",
+      "kind": "corridor",
+      "distance_m": 9.15,
+      "time_s": 9.15
+    },
+    {
+      "a": "3:E",
+      "b": "room:49",
+      "kind": "corridor",
+      "distance_m": 22.77,
+      "time_s": 22.77
+    },
+    {
+      "a": "room:49",
+      "b": "room:50",
+      "kind": "corridor",
+      "distance_m": 8.74,
+      "time_s": 8.74
+    },
+    {
+      "a": "room:50",
+      "b": "3:G",
+      "kind": "corridor",
+      "distance_m": 7.49,
+      "time_s": 7.49
+    },
+    {
+      "a": "3:G",
+      "b": "room:52",
+      "kind": "corridor",
+      "distance_m": 6.0,
+      "time_s": 6.0
+    },
+    {
+      "a": "room:52",
+      "b": "3:K",
+      "kind": "corridor",
+      "distance_m": 0.0,
+      "time_s": 0.0
+    },
+    {
+      "a": "3:F",
+      "b": "room:37",
+      "kind": "corridor",
+      "distance_m": 4.2533,
+      "time_s": 4.2533
+    },
+    {
+      "a": "room:37",
+      "b": "room:36",
+      "kind": "corridor",
+      "distance_m": 3.8667,
+      "time_s": 3.8667
+    },
+    {
+      "a": "room:36",
+      "b": "room:35",
+      "kind": "corridor",
+      "distance_m": 43.5,
+      "time_s": 43.5
+    },
+    {
+      "a": "room:35",
+      "b": "3:H",
+      "kind": "corridor",
+      "distance_m": 6.38,
+      "time_s": 6.38
+    },
+    {
+      "a": "3:K",
+      "b": "room:54",
+      "kind": "corridor",
+      "distance_m": 5.8,
+      "time_s": 5.8
+    },
+    {
+      "a": "room:54",
+      "b": "room:55",
+      "kind": "corridor",
+      "distance_m": 7.671,
+      "time_s": 7.671
+    },
+    {
+      "a": "room:55",
+      "b": "room:56",
+      "kind": "corridor",
+      "distance_m": 3.7419,
+      "time_s": 3.7419
+    },
+    {
+      "a": "room:56",
+      "b": "room:51",
+      "kind": "corridor",
+      "distance_m": 0.9355,
+      "time_s": 0.9355
+    },
+    {
+      "a": "room:51",
+      "b": "3:I",
+      "kind": "corridor",
+      "distance_m": 27.8516,
+      "time_s": 27.8516
+    },
+    {
+      "a": "3:I",
+      "b": "room:53",
+      "kind": "corridor",
+      "distance_m": 2.8323,
+      "time_s": 2.8323
+    },
+    {
+      "a": "room:53",
+      "b": "room:57",
+      "kind": "corridor",
+      "distance_m": 2.4322,
+      "time_s": 2.4322
+    },
+    {
+      "a": "room:57",
+      "b": "3:R",
+      "kind": "corridor",
+      "distance_m": 6.7355,
+      "time_s": 6.7355
+    },
+    {
+      "a": "4:A",
+      "b": "room:63",
+      "kind": "corridor",
+      "distance_m": 2.1221,
+      "time_s": 2.1221
+    },
+    {
+      "a": "room:63",
+      "b": "room:61",
+      "kind": "corridor",
+      "distance_m": 27.7802,
+      "time_s": 27.7802
+    },
+    {
+      "a": "room:61",
+      "b": "room:65",
+      "kind": "corridor",
+      "distance_m": 3.4725,
+      "time_s": 3.4725
+    },
+    {
+      "a": "room:65",
+      "b": "room:66",
+      "kind": "corridor",
+      "distance_m": 12.1539,
+      "time_s": 12.1539
+    },
+    {
+      "a": "room:66",
+      "b": "room:62",
+      "kind": "corridor",
+      "distance_m": 7.7167,
+      "time_s": 7.7167
+    },
+    {
+      "a": "room:62",
+      "b": "room:64",
+      "kind": "corridor",
+      "distance_m": 10.9964,
+      "time_s": 10.9964
+    },
+    {
+      "a": "room:64",
+      "b": "room:67",
+      "kind": "corridor",
+      "distance_m": 3.2796,
+      "time_s": 3.2796
+    },
+    {
+      "a": "room:67",
+      "b": "4:J",
+      "kind": "corridor",
+      "distance_m": 11.4786,
+      "time_s": 11.4786
+    },
+    {
+      "a": "4:J",
+      "b": "room:68",
+      "kind": "corridor",
+      "distance_m": 15.7228,
+      "time_s": 15.7228
+    },
+    {
+      "a": "room:68",
+      "b": "room:69",
+      "kind": "corridor",
+      "distance_m": 11.3822,
+      "time_s": 11.3822
+    },
+    {
+      "a": "room:69",
+      "b": "room:71",
+      "kind": "corridor",
+      "distance_m": 3.4725,
+      "time_s": 3.4725
+    },
+    {
+      "a": "room:71",
+      "b": "room:70",
+      "kind": "corridor",
+      "distance_m": 5.0159,
+      "time_s": 5.0159
+    },
+    {
+      "a": "room:70",
+      "b": "room:72",
+      "kind": "corridor",
+      "distance_m": 32.4103,
+      "time_s": 32.4103
+    },
+    {
+      "a": "room:72",
+      "b": "4:B",
+      "kind": "corridor",
+      "distance_m": 10.9963,
+      "time_s": 10.9963
+    },
+    {
+      "a": "4:J",
+      "b": "4:C",
+      "kind": "corridor",
+      "distance_m": 6,
+      "time_s": 6
+    },
+    {
+      "a": "4:A",
+      "b": "4:D",
+      "kind": "corridor",
+      "distance_m": 50,
+      "time_s": 50
+    },
+    {
+      "a": "4:D",
+      "b": "4:F",
+      "kind": "corridor",
+      "distance_m": 45,
+      "time_s": 45
+    },
+    {
+      "a": "4:B",
+      "b": "room:73",
+      "kind": "corridor",
+      "distance_m": 41.04,
+      "time_s": 41.04
+    },
+    {
+      "a": "room:73",
+      "b": "4:E",
+      "kind": "corridor",
+      "distance_m": 8.96,
+      "time_s": 8.96
+    },
+    {
+      "a": "4:E",
+      "b": "room:75",
+      "kind": "corridor",
+      "distance_m": 17.64,
+      "time_s": 17.64
+    },
+    {
+      "a": "room:75",
+      "b": "room:74",
+      "kind": "corridor",
+      "distance_m": 1.52,
+      "time_s": 1.52
+    },
+    {
+      "a": "room:74",
+      "b": "4:G",
+      "kind": "corridor",
+      "distance_m": 19.84,
+      "time_s": 19.84
+    },
+    {
+      "a": "4:G",
+      "b": "4:K",
+      "kind": "corridor",
+      "distance_m": 6,
+      "time_s": 6
+    },
+    {
+      "a": "4:F",
+      "b": "room:60",
+      "kind": "corridor",
+      "distance_m": 17.9203,
+      "time_s": 17.9203
+    },
+    {
+      "a": "room:60",
+      "b": "room:59",
+      "kind": "corridor",
+      "distance_m": 25.6279,
+      "time_s": 25.6279
+    },
+    {
+      "a": "room:59",
+      "b": "room:58",
+      "kind": "corridor",
+      "distance_m": 8.093,
+      "time_s": 8.093
+    },
+    {
+      "a": "room:58",
+      "b": "4:H",
+      "kind": "corridor",
+      "distance_m": 6.3588,
+      "time_s": 6.3588
+    },
+    {
+      "a": "4:K",
+      "b": "room:76",
+      "kind": "corridor",
+      "distance_m": 4.1294,
+      "time_s": 4.1294
+    },
+    {
+      "a": "room:76",
+      "b": "room:77",
+      "kind": "corridor",
+      "distance_m": 13.1392,
+      "time_s": 13.1392
+    },
+    {
+      "a": "room:77",
+      "b": "room:78",
+      "kind": "corridor",
+      "distance_m": 8.2589,
+      "time_s": 8.2589
+    },
+    {
+      "a": "room:78",
+      "b": "room:79",
+      "kind": "corridor",
+      "distance_m": 15.9547,
+      "time_s": 15.9547
+    },
+    {
+      "a": "room:79",
+      "b": "4:I",
+      "kind": "corridor",
+      "distance_m": 4.5178,
+      "time_s": 4.5178
+    },
+    {
+      "a": "4:I",
+      "b": "4:R",
+      "kind": "corridor",
+      "distance_m": 12,
+      "time_s": 12
+    },
+    {
+      "a": "1:A",
+      "b": "2:A",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:B",
+      "b": "2:B",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:C",
+      "b": "2:C",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:D",
+      "b": "2:D",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:E",
+      "b": "2:E",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:F",
+      "b": "2:F",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:G",
+      "b": "2:G",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:H",
+      "b": "2:H",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "1:I",
+      "b": "2:I",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:A",
+      "b": "3:A",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:B",
+      "b": "3:B",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:C",
+      "b": "3:C",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:D",
+      "b": "3:D",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:E",
+      "b": "3:E",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:F",
+      "b": "3:F",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:G",
+      "b": "3:G",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:H",
+      "b": "3:H",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "2:I",
+      "b": "3:I",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:A",
+      "b": "4:A",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:B",
+      "b": "4:B",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:C",
+      "b": "4:C",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:D",
+      "b": "4:D",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:E",
+      "b": "4:E",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:F",
+      "b": "4:F",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:G",
+      "b": "4:G",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:H",
+      "b": "4:H",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    },
+    {
+      "a": "3:I",
+      "b": "4:I",
+      "kind": "stairs",
+      "distance_m": null,
+      "time_s": 30
+    }
+  ],
+  "assumptions": {
+    "walking_m_per_min": 60,
+    "seconds_per_floor": 30,
+    "upper_corridor_m": 158,
+    "side_corridor_m": 95,
+    "bottom_corridor_m": 58
+  },
+  "version": "20261026-main-building",
+  "building": "Главный корпус",
+  "entrance_node": "1:J",
+  "key_desk_id": 2,
+  "rooms": [
+    {
+      "id": 13,
+      "name": "Б1-11",
+      "floor": 1,
+      "node_id": "room:13",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 14,
+      "name": "Б1-21",
+      "floor": 1,
+      "node_id": "room:14",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 15,
+      "name": "Б1-79",
+      "floor": 1,
+      "node_id": "room:15",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 16,
+      "name": "Б2-18",
+      "floor": 2,
+      "node_id": "room:16",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 17,
+      "name": "Б2-22",
+      "floor": 2,
+      "node_id": "room:17",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 18,
+      "name": "Б2-24",
+      "floor": 2,
+      "node_id": "room:18",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 19,
+      "name": "Б2-26",
+      "floor": 2,
+      "node_id": "room:19",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 20,
+      "name": "Б2-27",
+      "floor": 2,
+      "node_id": "room:20",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 21,
+      "name": "Б2-35",
+      "floor": 2,
+      "node_id": "room:21",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 22,
+      "name": "Б2-55",
+      "floor": 2,
+      "node_id": "room:22",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 23,
+      "name": "Б2-89",
+      "floor": 2,
+      "node_id": "room:23",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 24,
+      "name": "Б2-96",
+      "floor": 2,
+      "node_id": "room:24",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 25,
+      "name": "Б2-109",
+      "floor": 2,
+      "node_id": "room:25",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 26,
+      "name": "Б2-113",
+      "floor": 2,
+      "node_id": "room:26",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 27,
+      "name": "Б2-117",
+      "floor": 2,
+      "node_id": "room:27",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 28,
+      "name": "Б2-120",
+      "floor": 2,
+      "node_id": "room:28",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 29,
+      "name": "Б2-121",
+      "floor": 2,
+      "node_id": "room:29",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 30,
+      "name": "Б2-125",
+      "floor": 2,
+      "node_id": "room:30",
+      "status": "user_located_approximate_projection",
+      "location_source": "User clarification 2026-10-25; position within section estimated"
+    },
+    {
+      "id": 31,
+      "name": "Б2-127",
+      "floor": 2,
+      "node_id": "room:31",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 32,
+      "name": "Б2-129",
+      "floor": 2,
+      "node_id": "room:32",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 33,
+      "name": "Б2-133",
+      "floor": 2,
+      "node_id": "room:33",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 34,
+      "name": "Б2-135",
+      "floor": 2,
+      "node_id": "room:34",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 35,
+      "name": "Б3-1",
+      "floor": 3,
+      "node_id": "room:35",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 36,
+      "name": "Б3-13",
+      "floor": 3,
+      "node_id": "room:36",
+      "status": "user_located_approximate_projection",
+      "location_source": "User clarification 2026-10-25; position within section estimated"
+    },
+    {
+      "id": 37,
+      "name": "Б3-15",
+      "floor": 3,
+      "node_id": "room:37",
+      "status": "user_located_approximate_projection",
+      "location_source": "User clarification 2026-10-25; position within section estimated"
+    },
+    {
+      "id": 38,
+      "name": "Б3-23",
+      "floor": 3,
+      "node_id": "room:38",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 39,
+      "name": "Б3-24",
+      "floor": 3,
+      "node_id": "room:39",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 40,
+      "name": "Б3-26",
+      "floor": 3,
+      "node_id": "room:40",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 41,
+      "name": "Б3-36",
+      "floor": 3,
+      "node_id": "room:41",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 42,
+      "name": "Б3-37",
+      "floor": 3,
+      "node_id": "room:42",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 43,
+      "name": "Б3-45",
+      "floor": 3,
+      "node_id": "room:43",
+      "status": "user_located_approximate_projection",
+      "location_source": "User clarification 2026-10-25; position within section estimated"
+    },
+    {
+      "id": 44,
+      "name": "Б3-47",
+      "floor": 3,
+      "node_id": "room:44",
+      "status": "user_located_approximate_projection",
+      "location_source": "User clarification 2026-10-25; position within section estimated"
+    },
+    {
+      "id": 45,
+      "name": "Б3-53",
+      "floor": 3,
+      "node_id": "room:45",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 46,
+      "name": "Б3-73",
+      "floor": 3,
+      "node_id": "room:46",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 47,
+      "name": "Б3-93",
+      "floor": 3,
+      "node_id": "room:47",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 48,
+      "name": "Б3-96",
+      "floor": 3,
+      "node_id": "room:48",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 49,
+      "name": "Б3-102",
+      "floor": 3,
+      "node_id": "room:49",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 50,
+      "name": "Б3-104",
+      "floor": 3,
+      "node_id": "room:50",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 51,
+      "name": "Б3-110",
+      "floor": 3,
+      "node_id": "room:51",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 52,
+      "name": "Б3-115",
+      "floor": 3,
+      "node_id": "room:52",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 53,
+      "name": "Б3-116",
+      "floor": 3,
+      "node_id": "room:53",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 54,
+      "name": "Б3-117",
+      "floor": 3,
+      "node_id": "room:54",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 55,
+      "name": "Б3-119",
+      "floor": 3,
+      "node_id": "room:55",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 56,
+      "name": "Б3-121",
+      "floor": 3,
+      "node_id": "room:56",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 57,
+      "name": "Б3-131",
+      "floor": 3,
+      "node_id": "room:57",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 58,
+      "name": "Б4-1",
+      "floor": 4,
+      "node_id": "room:58",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 59,
+      "name": "Б4-4",
+      "floor": 4,
+      "node_id": "room:59",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 60,
+      "name": "Б4-9",
+      "floor": 4,
+      "node_id": "room:60",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 61,
+      "name": "Б4-38",
+      "floor": 4,
+      "node_id": "room:61",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 62,
+      "name": "Б4-44",
+      "floor": 4,
+      "node_id": "room:62",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 63,
+      "name": "Б4-45",
+      "floor": 4,
+      "node_id": "room:63",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 64,
+      "name": "Б4-46",
+      "floor": 4,
+      "node_id": "room:64",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 65,
+      "name": "Б4-53",
+      "floor": 4,
+      "node_id": "room:65",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 66,
+      "name": "Б4-57",
+      "floor": 4,
+      "node_id": "room:66",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 67,
+      "name": "Б4-61",
+      "floor": 4,
+      "node_id": "room:67",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 68,
+      "name": "Б4-62",
+      "floor": 4,
+      "node_id": "room:68",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 69,
+      "name": "Б4-64",
+      "floor": 4,
+      "node_id": "room:69",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 70,
+      "name": "Б4-66",
+      "floor": 4,
+      "node_id": "room:70",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 71,
+      "name": "Б4-67",
+      "floor": 4,
+      "node_id": "room:71",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 72,
+      "name": "Б4-72",
+      "floor": 4,
+      "node_id": "room:72",
+      "status": "user_located_approximate_projection",
+      "location_source": "User clarification 2026-10-25; position within section estimated"
+    },
+    {
+      "id": 73,
+      "name": "Б4-84",
+      "floor": 4,
+      "node_id": "room:73",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 74,
+      "name": "Б4-92",
+      "floor": 4,
+      "node_id": "room:74",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 75,
+      "name": "Б4-97",
+      "floor": 4,
+      "node_id": "room:75",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 76,
+      "name": "Б4-103",
+      "floor": 4,
+      "node_id": "room:76",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 77,
+      "name": "Б4-107",
+      "floor": 4,
+      "node_id": "room:77",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 78,
+      "name": "Б4-109",
+      "floor": 4,
+      "node_id": "room:78",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    },
+    {
+      "id": 79,
+      "name": "Б4-113",
+      "floor": 4,
+      "node_id": "room:79",
+      "status": "approximate_corridor_projection",
+      "location_source": "Visible label on supplied plan; door projected"
+    }
+  ],
+  "notes": [
+    "Approximate door projections from four user-supplied plans and six position clarifications.",
+    "158m top, 95m sides, 58m bottom corridors. 60m/min walking, 30s per adjacent floor.",
+    "Horizontal distance excludes unknown staircase length; rank entrance proximity by time."
+  ]
+}

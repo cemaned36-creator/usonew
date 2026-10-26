@@ -2,9 +2,9 @@
 import heapq
 from collections import defaultdict
 from app.models.teacher import Teacher
-from app.models.access_point import AccessPoint
 from app.models.room_connection import RoomConnection
 from app.services.lesson_times import LESSON_PAIRS
+from app.services.key_desks import main_key_desk_id
 
 
 def load_teacher_conditions(db):
@@ -35,20 +35,21 @@ def condition_issues(entries, lessons, rooms, teachers):
 
 
 def entrance_distances(db):
-    # User confirmed that the Building B entrance is at its key desk.
-    desks = db.query(AccessPoint).filter(
-        AccessPoint.name == "Охрана корпуса Б",
-        AccessPoint.point_type == "KEY_DESK",
-    ).all()
-    if len(desks) != 1:
+    """Walking minutes from the entrance, including the cost of stair detours.
+
+    The historical name is retained for callers. Corridor-only metres would
+    make stairs appear free; route time is the accessibility cost instead.
+    """
+    desk_id = main_key_desk_id(db)
+    if desk_id is None:
         return {}
     graph = defaultdict(list)
     for edge in db.query(RoomConnection).all():
         source = ("R", edge.from_room_id) if edge.from_room_id is not None else ("A", edge.from_access_point_id)
         target = ("R", edge.to_room_id) if edge.to_room_id is not None else ("A", edge.to_access_point_id)
-        if source[1] is not None and target[1] is not None and edge.distance is not None and edge.distance >= 0:
-            graph[source].append((target, float(edge.distance)))
-    source = ("A", desks[0].id)
+        if source[1] is not None and target[1] is not None and edge.travel_time is not None and edge.travel_time >= 0:
+            graph[source].append((target, float(edge.travel_time)))
+    source = ("A", desk_id)
     distances = {source: 0.0}
     queue = [(0.0, source)]
     while queue:

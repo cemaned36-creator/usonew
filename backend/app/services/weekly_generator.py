@@ -25,6 +25,7 @@ from app.services.lesson_participants import (
     get_lesson_students_count,
     participants_overlap,
 )
+from app.services.room_scope import room_in_active_scope
 from app.services.lesson_times import LESSON_PAIRS
 from app.services.weekly_validation import validate_weekly_entries
 from app.services.teacher_conditions import load_teacher_conditions, room_allowed, time_allowed, entrance_distances, entrance_cost
@@ -223,7 +224,7 @@ def generate_weekly_preview(
             if lesson.id in sports:
                 if room.room_type != "gym":
                     continue
-            elif room.building != "Б" or room.room_type == "gym":
+            elif not room_in_active_scope(room):
                 continue
 
             if room.capacity < capacity:

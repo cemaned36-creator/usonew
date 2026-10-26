@@ -1,16 +1,13 @@
 
 from sqlalchemy.orm import Session
 from app.models.room import Room
-from app.models.access_point import AccessPoint
+from app.services.key_desks import room_key_desk_id
 
 from app.services.distance import (
     get_travel_time,
     get_room_to_access_point_time,
     get_access_point_to_room_time,
 )
-
-# ID точки выдачи и возврата ключей
-KEY_DESK_ID = 1
 
 # Время получения и возврата ключей, минуты
 KEY_PICKUP_TIME = 5
@@ -21,30 +18,7 @@ NO_KEY_ACCESS_TYPES = {"OPEN", "PASS"}
 
 
 def _get_key_desk_id(db: Session, room_id: int) -> int | None:
-    room = db.get(Room, room_id)
-    if room is None:
-        return None
-
-    if room.building == "Главный корпус":
-        desk = db.get(AccessPoint, KEY_DESK_ID)
-        if desk is not None and desk.point_type == "KEY_DESK":
-            return desk.id
-        return None
-
-    if room.building == "Б":
-        desks = (
-            db.query(AccessPoint)
-            .filter(
-                AccessPoint.name == "Охрана корпуса Б",
-                AccessPoint.point_type == "KEY_DESK",
-            )
-            .limit(2)
-            .all()
-        )
-        if len(desks) == 1:
-            return desks[0].id
-
-    return None
+    return room_key_desk_id(db, db.get(Room, room_id))
 
 
 

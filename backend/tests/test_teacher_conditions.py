@@ -42,9 +42,9 @@ class ConditionsTest(unittest.TestCase):
             self.db.add(Room(id=i, name=str(i), building='Б', floor=i,
                 capacity=30, room_type='classroom', access_type='OPEN'))
             self.db.add(RoomConnection(from_access_point_id=2, to_room_id=i,
-                distance={1:100,2:10,3:5}[i], travel_time=1))
+                distance={1:100,2:10,3:5}[i], travel_time={1:3,2:2,3:1}[i]))
             for j in range(1,4):
-                if i!=j:self.db.add(RoomConnection(from_room_id=i,to_room_id=j,distance=100,travel_time=1))
+                if i!=j:self.db.add(RoomConnection(from_room_id=i,to_room_id=j,distance=100,travel_time=2))
         self.db.flush()
         self.db.add(Lesson(id=1, teacher_id=1, subject_id=1, group_id=1,
                            odd_pairs=1, even_pairs=1, lesson_type='Лекция'))
