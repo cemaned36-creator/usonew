@@ -294,6 +294,106 @@ def _repair_teacher_conditions(db, entries, rooms_list, rooms, lessons, requirem
             entry.room_id, entry.start_time, entry.end_time = old
 
 
+def _repair_infeasible_transitions(
+    db, entries, rooms_list, rooms, lessons, requirements, participants,
+    teacher_id=None,
+):
+    """Repair walking violations on preview copies, without changing time slots.
+
+    Try one room first, then both rooms of an adjacent pair. A proposal must
+    remove that violation without introducing another one in the teacher's
+    day. This is a bounded local search, not a guarantee of a global solution.
+    """
+    teachers = load_teacher_conditions(db)
+    distances = entrance_distances(db)
+    room_profiles, lesson_profiles = load_equipment_profiles(db)
+    days = {}
+    for entry in entries:
+        lesson = lessons.get(entry.lesson_id)
+        if lesson is not None and (teacher_id is None or lesson.teacher_id == teacher_id):
+            days.setdefault((lesson.teacher_id, entry.weekday), []).append(entry)
+
+    for (tid, _), day in sorted(days.items()):
+        day.sort(key=lambda entry: (entry.start_time, entry.id))
+        pairs = list(zip(day, day[1:]))
+        teacher = teachers.get(tid)
+
+        def state():
+            bad, total = set(), 0
+            for previous, current in pairs:
+                value = _transition_minutes(db, previous, current, lessons, rooms)
+                if value is None:
+                    bad.add((previous.id, current.id))
+                else:
+                    total += value
+            return bad, total
+
+        def candidates(entry):
+            lesson = lessons[entry.lesson_id]
+            if (_is_sports_entry(entry, rooms, requirements)
+                    or not room_in_active_scope(rooms.get(entry.room_id))
+                    or not time_allowed(entry.start_time, teacher)):
+                return []
+            students = get_lesson_students_count(participants[lesson.id])
+            return [room for room in rooms_list
+                    if room.id != entry.room_id
+                    and _room_fits(room, requirements.get(lesson.id), students)
+                    and room_allowed(room, teacher)
+                    and room_has_required_profiles(room.id, lesson.id, room_profiles, lesson_profiles)
+                    and not _has_schedule_conflict(room, entry, entries, lessons, participants)]
+
+        while True:
+            old_bad, _ = state()
+            if not old_bad:
+                break
+            improved = False
+            for first, second in pairs:
+                target = (first.id, second.id)
+                if target not in old_bad:
+                    continue
+                # With overlapping slots, changing rooms cannot fix the cause.
+                if first.end_time > second.start_time:
+                    continue
+                pools = (candidates(first), candidates(second))
+                best = None
+
+                def consider(changes):
+                    nonlocal best
+                    original = [(entry, entry.room_id) for entry, _ in changes]
+                    try:
+                        for entry, room in changes:
+                            entry.room_id = room.id
+                        if any(_has_schedule_conflict(room, entry, entries, lessons, participants)
+                               for entry, room in changes):
+                            return
+                        bad, total = state()
+                        if target in bad or not bad.issubset(old_bad):
+                            return
+                        preference = sum(entrance_cost(entry.room_id, teacher, distances) for entry in day)
+                        score = (len(bad), preference, total,
+                                 tuple((entry.id, room.id) for entry, room in changes))
+                        if best is None or score < best[0]:
+                            best = (score, list(changes))
+                    finally:
+                        for entry, room_id in original:
+                            entry.room_id = room_id
+
+                for entry, pool in zip((first, second), pools):
+                    for room in pool:
+                        consider([(entry, room)])
+                if best is None:
+                    for first_room in pools[0]:
+                        for second_room in pools[1]:
+                            consider([(first, first_room), (second, second_room)])
+                if best is not None:
+                    for entry, room in best[1]:
+                        entry.room_id = room.id
+                    improved = True
+                    break  # Recompute violations after every accepted repair.
+            if not improved:
+                break
+
+
 def _optimize_entries(
     db, entries, rooms_list, rooms, lessons, requirements, participants,
     teacher_id: int | None = None,
@@ -478,6 +578,11 @@ def _preview_optimization(
     distances = entrance_distances(db)
     _repair_teacher_conditions(db, all_entries, rooms_list, rooms, lessons, requirements,
                                participants, teachers, distances, teacher_id)
+
+    _repair_infeasible_transitions(
+        db, all_entries, rooms_list, rooms, lessons, requirements,
+        participants, teacher_id,
+    )
 
     # 2. Оптимизируем копии расписания.
     _optimize_entries(
