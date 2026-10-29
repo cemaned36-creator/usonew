@@ -110,17 +110,25 @@ export default function OptimizationPage() {
   const [saving, setSaving] = useState(false);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
   const [message, setMessage] = useState<Message | null>(null);
-  const [teacherAccess, setTeacherAccess] = useState(false);
+  const [profile, setProfile] = useState<{ role: "admin" | "teacher"; teacherId?: number; name?: string } | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedWeekType, setSelectedWeekType] = useState("odd");
-  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [adminTeacherId, setSelectedTeacherId] = useState("");
+  const selectedTeacherId = profile?.role === "teacher" ? String(profile.teacherId) : adminTeacherId;
+  const pendingTeacherSelection = profile?.role === "admin" && !adminTeacherId && Boolean(teacherSearch.trim());
   useEffect(() => {
     try {
       const savedProfile = localStorage.getItem("uso-user-profile");
-      if (savedProfile && JSON.parse(savedProfile)?.role === "teacher") {
-        setTeacherAccess(true);
+      const parsed = savedProfile ? JSON.parse(savedProfile) : null;
+      if (parsed?.role === "admin" || (parsed?.role === "teacher" && Number.isInteger(parsed.teacherId) && parsed.teacherId > 0)) {
+        setProfile(parsed);
       }
     } catch {
-      // Ignore malformed local profile; dashboard will request a new selection.
+      // An invalid profile must never default to all teachers.
+    } finally {
+      setProfileLoaded(true);
     }
   }, []);
 
@@ -185,6 +193,7 @@ export default function OptimizationPage() {
   }, [entries, changesByEntry]);
 
   async function runOptimizationPreview() {
+    if (!profile || pendingTeacherSelection || (profile.role === "teacher" && !teacherById.has(Number(selectedTeacherId)))) return;
     setRunning(true);
     setMessage(null);
     setConfirmStep(0);
@@ -237,7 +246,7 @@ export default function OptimizationPage() {
   }
 
   async function applyOptimization() {
-    if (!result || !result.can_apply || result.changes.length === 0) return;
+    if (!profile || pendingTeacherSelection || !result || !result.can_apply || result.changes.length === 0) return;
     const expectedTeacherId = selectedTeacherId
       ? Number(selectedTeacherId)
       : null;
@@ -405,16 +414,18 @@ export default function OptimizationPage() {
     );
   }
 
-  if (teacherAccess) {
+  if (!profileLoaded) return <div className="p-8 text-slate-500">Загрузка профиля…</div>;
+
+  if (!profile || (profile.role === "teacher" && !loadingData && !teacherById.has(Number(selectedTeacherId)))) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f8fa] p-6">
         <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-sm">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
             <CalendarDays className="h-6 w-6 text-slate-600" />
           </div>
-          <h1 className="mt-4 text-lg font-semibold text-slate-900">Раздел доступен только администратору</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">В режиме преподавателя доступен только просмотр недельного расписания.</p>
-          <Link href="/weekly-schedule" className="mt-5 inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">Открыть расписание</Link>
+          <h1 className="mt-4 text-lg font-semibold text-slate-900">Выберите профиль</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Для оптимизации выберите действующий профиль на главной странице.</p>
+          <Link href="/" className="mt-5 inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">Выбрать профиль</Link>
         </div>
       </div>
     );
@@ -490,34 +501,47 @@ export default function OptimizationPage() {
                 </div>
               </div>
               <div className="mb-5">
-                <label
-                  htmlFor="optimization-teacher"
-                  className="mb-2 block text-sm font-medium text-slate-700"
-                >
-                  Преподаватель
-                </label>
-
-                <select
-                  id="optimization-teacher"
-                  value={selectedTeacherId}
-                  disabled={running || saving || loadingData}
-                  onChange={(event) => {
-                    setSelectedTeacherId(event.target.value);
-                    setResult(null);
-                    setConfirmStep(0);
-                    setMessage(null);
-                  }}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 disabled:opacity-50 sm:max-w-xl"
-                >
-                  <option value="">Все преподаватели</option>
-                  {[...teachers]
-                    .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-                    .map((teacher) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.name}
-                      </option>
-                    ))}
-                </select>
+                {profile.role === "teacher" ? (
+                  <div className="rounded-xl bg-emerald-50 p-4">
+                    <p className="text-sm font-semibold text-emerald-900">Моё расписание — {teacherById.get(Number(selectedTeacherId)) ?? profile.name}</p>
+                    <p className="mt-1 text-xs text-emerald-800">Оптимизируются только ваши занятия выбранной недели.</p>
+                  </div>
+                ) : (
+                  <div className="max-w-xl">
+                    <label htmlFor="optimization-teacher" className="mb-2 block text-sm font-medium text-slate-700">Поиск преподавателя</label>
+                    <input
+                      id="optimization-teacher" type="search" autoComplete="off"
+                      placeholder="Введите фамилию, имя или отчество"
+                      value={teacherSearch} disabled={running || saving || loadingData}
+                      aria-controls="optimization-teacher-results" aria-expanded={searchOpen}
+                      onFocus={() => setSearchOpen(true)}
+                      onKeyDown={(event) => { if (event.key === "Escape") setSearchOpen(false); }}
+                      onChange={(event) => {
+                        setTeacherSearch(event.target.value); setSearchOpen(true); setSelectedTeacherId("");
+                        setResult(null); setConfirmStep(0); setMessage(null);
+                      }}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 disabled:opacity-50"
+                    />
+                    {searchOpen && !running && !saving && !loadingData && (
+                      <div id="optimization-teacher-results" className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-slate-200">
+                        {teachers.filter((teacher) => teacher.name.toLocaleLowerCase("ru").includes(teacherSearch.trim().toLocaleLowerCase("ru"))).sort((a, b) => a.name.localeCompare(b.name, "ru")).map((teacher) => (
+                          <button type="button" key={teacher.id} onClick={() => {
+                            setSelectedTeacherId(String(teacher.id)); setTeacherSearch(teacher.name); setSearchOpen(false);
+                            setResult(null); setConfirmStep(0); setMessage(null);
+                          }} className="block w-full px-4 py-3 text-left text-sm hover:bg-emerald-50 focus:bg-emerald-50">{teacher.name}</button>
+                        ))}
+                        {!teachers.some((teacher) => teacher.name.toLocaleLowerCase("ru").includes(teacherSearch.trim().toLocaleLowerCase("ru"))) && <p className="p-4 text-sm text-slate-500">Преподаватели не найдены.</p>}
+                      </div>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                      <span>{selectedTeacherId ? `Выбран: ${teacherById.get(Number(selectedTeacherId))}` : pendingTeacherSelection ? "Выберите преподавателя из результатов поиска." : "Выбраны все преподаватели"}</span>
+                      <button type="button" disabled={running || saving || loadingData} onClick={() => {
+                        setSelectedTeacherId(""); setTeacherSearch(""); setSearchOpen(false);
+                        setResult(null); setConfirmStep(0); setMessage(null);
+                      }} className="font-medium text-emerald-700 underline disabled:opacity-50">Все преподаватели</button>
+                    </div>
+                  </div>
+                )}
 
                 <p className="mt-2 text-xs text-slate-500">
                   Учитываются условия выбранного преподавателя: время начала, этаж и близость ко входу.
@@ -528,13 +552,13 @@ export default function OptimizationPage() {
                 <div>
                   <h2 className="text-base font-semibold">Запуск оптимизации — {selectedWeekType === "odd" ? "нечётная неделя" : "чётная неделя"}</h2>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-                    Система подберёт подходящие аудитории и сравнит время переходов преподавателей.
+                    Система подберёт подходящие аудитории и сравнит время переходов{selectedTeacherId ? " выбранного преподавателя" : " преподавателей"}.
                     База данных не изменится, пока ты не подтвердишь результат дважды.
                   </p>
                 </div>
                 <button
                   onClick={runOptimizationPreview}
-                  disabled={running || loadingData || saving}
+                  disabled={running || loadingData || saving || pendingTeacherSelection}
                   className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -586,7 +610,7 @@ export default function OptimizationPage() {
                       </div>
                       {(result.constraint_issues ?? []).length > 0 && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                         <h3 className="font-semibold">Не удалось выполнить все условия</h3>
-                        <p className="mt-1">Сохранение отключено. Попробуйте оптимизацию всех преподавателей, пересоставление расписания или изменение условий.</p>
+                        <p className="mt-1">Сохранение отключено. {profile.role === "teacher" ? "Обратитесь к администратору для проверки расписания и условий." : "Попробуйте оптимизацию всех преподавателей, пересоставление расписания или изменение условий."}</p>
                         <ul className="mt-2 space-y-1">{result.constraint_issues.map((issue, index) => <li key={index}>{issue.entry_id ? `Запись #${issue.entry_id}: ` : ""}{issue.reason}</li>)}</ul>
                       </div>}
                       {(result.warnings ?? []).map((warning) => <p key={warning} className="mt-3 text-sm text-amber-800">{warning}</p>)}

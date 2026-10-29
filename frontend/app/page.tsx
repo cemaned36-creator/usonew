@@ -275,13 +275,11 @@ export default function Home() {
                 href="#"
               />
 
-              {selectedProfile?.role !== "teacher" && (
-                <SidebarItem
+              <SidebarItem
                   icon={Sparkles}
                   label="Оптимизация"
                   href="/optimization"
                 />
-              )}
 
             </div>
 
