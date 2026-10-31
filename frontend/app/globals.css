@@ -133,3 +133,21 @@ nav a svg,
 nav button svg {
   color: #008A43 !important;
 }
+:root{--surface:#fff;--page:#f5f6f8;--ink:#252832;--muted:#646878;--icon:#009241;--button-ink:#fff;--panel-radius:20px}
+html[data-palette="soft"]{--brand-purple:#ff6f61;--brand-purple-dark:#ee6053;--brand-lilac:#fff0ed;--brand-border:#e0e4e7;--icon:#147d80;--button-ink:#292e33;--panel-radius:28px;--page:#f1f3f5}
+html[data-theme="dark"]{color-scheme:dark;--background:#15171d;--surface:#20232c;--page:#15171d;--ink:#eef0f5;--muted:#b2b7c7;--foreground:#eef0f5;--brand-purple:#b6a4ff;--brand-purple-dark:#c6baff;--brand-lilac:#332c48;--brand-border:#3c4150;--brand-muted:#b2b7c7;--icon:#69d697;--button-ink:#211442;--brand-mint:#163b29;--brand-green-dark:#71dfa0}
+html[data-theme="dark"][data-palette="soft"]{--brand-purple:#ff8b7f;--brand-purple-dark:#ffa699;--brand-lilac:#432e30;--icon:#72d8d2;--button-ink:#292e33}
+body{font-family:var(--font-geist-sans),"Segoe UI",sans-serif;font-weight:450;color:var(--ink);background:var(--page)}
+[class~="bg-white"]{background-color:var(--surface)!important}[class~="bg-slate-50"]{background-color:var(--page)!important}
+[class~="text-slate-900"],[class~="text-slate-800"],[class~="text-slate-700"]{color:var(--ink)!important}
+[class~="text-slate-600"],[class~="text-slate-500"]{color:var(--muted)!important}
+[class~="bg-slate-900"],[class~="bg-slate-950"],[class~="bg-blue-600"],[class~="bg-blue-700"]{color:var(--button-ink)!important}
+[class~="font-semibold"]{font-weight:650}[class~="rounded-2xl"],[class~="rounded-3xl"]{border-radius:var(--panel-radius)}
+nav a svg,nav button svg{color:var(--icon)!important}nav [aria-current="page"]{background:var(--brand-purple);color:var(--button-ink)}
+input,select,textarea{background:var(--surface);color:var(--ink)}
+.lesson-time{background:var(--brand-lilac);border-radius:14px;padding:10px 8px;width:max-content;min-width:62px;text-align:center;font-variant-numeric:tabular-nums}
+.brand-logo-link{border-bottom:1px solid var(--brand-border)}.brand-image{filter:url(#uso-clean-logo)}html[data-theme="dark"] .brand-image{filter:url(#uso-white-logo)}
+.mobile-navigation{display:none}
+@media(max-width:1023px){.mobile-navigation{display:block;background:var(--surface);border-bottom:1px solid var(--brand-border);padding:8px 16px}.mobile-navigation button{display:flex;align-items:center;gap:8px;min-height:44px}.mobile-navigation nav{display:grid;gap:4px}.mobile-navigation a{padding:12px;border-radius:12px}}
+@media(max-width:650px){html[data-density="compact"] main{padding:12px}html[data-density="airy"] main{padding:24px 16px}html[data-density="compact"] main [class~="py-4"]{padding-top:10px;padding-bottom:10px}html[data-density="airy"] main [class~="py-4"]{padding-top:24px;padding-bottom:24px}input,select{font-size:16px}header{min-height:88px;height:auto!important}}
+

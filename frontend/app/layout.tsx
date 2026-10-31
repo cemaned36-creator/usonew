@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Golos_Text, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Appearance from "@/components/Appearance";
 
-const geistSans = Geist({
+const geistSans = Golos_Text({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
 });
 
 const geistMono = Geist_Mono({
@@ -23,7 +24,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col"><Appearance>{children}</Appearance></body>
     </html>
   );
 }
+

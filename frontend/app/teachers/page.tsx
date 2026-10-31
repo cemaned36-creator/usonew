@@ -101,7 +101,7 @@ export default function TeachersPage() {
             </div>
             <p className="mb-3 mt-8 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Система</p>
             <div className="space-y-1">
-              <NavItem href="#" label="Настройки" icon={<Users className="h-[18px] w-[18px]" />} />
+              <NavItem href="/settings" label="Настройки" icon={<Users className="h-[18px] w-[18px]" />} />
               <NavItem href="/about-system" label="О системе" icon={<Info className="h-[18px] w-[18px]" />} />
             </div>
           </nav>
@@ -291,3 +291,4 @@ function TeacherConditionsForm({ teacher, editable, onSaved }: {
     {message && <p role={failed ? "alert" : "status"} className={`mt-3 text-sm ${failed ? "text-red-700" : "text-slate-700"}`}>{message}</p>}
   </form>;
 }
+

@@ -292,7 +292,7 @@ export default function Home() {
               <SidebarItem
                 icon={Settings}
                 label="Настройки"
-                href="#"
+                href="/settings"
               />
               <SidebarItem
                 icon={Info}
@@ -476,7 +476,7 @@ export default function Home() {
 
                           {/* Time */}
 
-                          <div>
+                          <div className="lesson-time">
 
                             <div className="text-sm font-semibold text-slate-800">
                               {item.time}
@@ -649,4 +649,5 @@ function SidebarItem({
     </Link>
   );
 }
+
 
