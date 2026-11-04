@@ -31,6 +31,28 @@ type ReportChange = {
   };
 };
 
+type GroupDayQuality = {
+  weekday: number;
+  lessons: number;
+  occupied_pairs: number;
+  windows: number | null;
+  span_minutes: number;
+  first_pair: number | null;
+  last_pair: number | null;
+  unknown_pair_entries: number;
+};
+
+type GroupWeekQuality = {
+  days_with_lessons: number;
+  lesson_entries: number;
+  occupied_pairs: number;
+  windows: number | null;
+  span_minutes: number;
+  latest_pair: number | null;
+  unknown_pair_entries: number;
+  days: GroupDayQuality[];
+};
+
 export type OptimizationDetailedReport = {
   version: number;
   summary: {
@@ -58,6 +80,11 @@ export type OptimizationDetailedReport = {
     group_name: string | null;
     changes_count: number;
     entry_ids: number[];
+    before?: GroupWeekQuality;
+    after?: GroupWeekQuality;
+    window_delta?: number | null;
+    span_delta_minutes?: number;
+    impact?: "improved" | "worsened" | "mixed" | "unchanged" | "unknown";
   }[];
   changes: ReportChange[];
 };
@@ -169,21 +196,64 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
       )}
 
       {tab === "groups" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-slate-500">
+            Окно — свободная пара между занятиями. Длительность учебного дня —
+            от начала первой до конца последней пары, включая перемены.
+            Параллельные подгруппы считаются одним занятым временным слотом.
+          </p>
           {!report.groups.length && <p className="text-sm text-slate-500">Изменений в расписаниях групп нет.</p>}
           {report.groups.map(group => (
-            <div key={group.group_id} className="rounded-xl border border-slate-200 p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Users className="h-4 w-4 text-emerald-700" />
-                {group.group_name ?? `Группа #${group.group_id}`}
+            <article key={group.group_id} className="rounded-xl border border-slate-200 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Users className="h-4 w-4 text-emerald-700" />
+                  {group.group_name ?? `Группа #${group.group_id}`}
+                </h3>
+                <span className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                  group.impact === "improved" ? "bg-emerald-50 text-emerald-800" :
+                  group.impact === "worsened" ? "bg-rose-50 text-rose-800" :
+                  "bg-slate-100 text-slate-600"
+                }`}>
+                  {group.impact === "improved" ? "Улучшено" :
+                    group.impact === "worsened" ? "Ухудшено" :
+                    group.impact === "mixed" ? "Смешанный эффект" :
+                    group.impact === "unknown" ? "Не все пары распознаны" : "Без изменений"}
+                </span>
               </div>
               <p className="mt-2 text-sm text-slate-600">Изменено занятий: {group.changes_count}</p>
-              <p className="mt-1 text-xs text-slate-400">Записи: {group.entry_ids.join(", ")}</p>
+              {group.before && group.after && (
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <SummaryMetric label="Окон до" value={group.before.windows == null ? "—" : String(group.before.windows)} />
+                    <SummaryMetric label="Окон после" value={group.after.windows == null ? "—" : String(group.after.windows)} />
+                    <SummaryMetric label="Учебный день, сумма до" value={metric(group.before.span_minutes)} />
+                    <SummaryMetric label="Учебный день, сумма после" value={metric(group.after.span_minutes)} />
+                  </div>
+                  <details className="rounded-xl border border-slate-200 p-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-700">Сравнение по дням недели</summary>
+                    <div className="mt-3 space-y-2">
+                      {group.before.days.map(day => {
+                        const next = group.after!.days.find(item => item.weekday === day.weekday);
+                        if (!next || (!day.lessons && !next.lessons)) return null;
+                        return (
+                          <div key={day.weekday} className="rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
+                            <p className="font-semibold">{DAYS[day.weekday]}</p>
+                            <p className="mt-1">Окна: {day.windows ?? "—"} → {next.windows ?? "—"}</p>
+                            <p>Продолжительность: {metric(day.span_minutes)} → {metric(next.span_minutes)}</p>
+                            <p>Первая / последняя пара: {day.first_pair ?? "—"} / {day.last_pair ?? "—"} → {next.first_pair ?? "—"} / {next.last_pair ?? "—"}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                </div>
+              )}
               <button type="button" onClick={() => { setGroupFilter(String(group.group_id)); setTab("changes"); }}
                 className="mt-3 text-sm font-medium text-emerald-700 underline">
                 Посмотреть изменения группы
               </button>
-            </div>
+            </article>
           ))}
         </div>
       )}
