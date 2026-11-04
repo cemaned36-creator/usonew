@@ -106,3 +106,53 @@ def test_history_keeps_detailed_report_without_changing_old_metrics():
     assert run.metrics["detailed_report"] == report
     serialized = serialize_run(run)
     assert serialized["metrics"]["detailed_report"]["version"] == 1
+
+
+def test_verified_earliest_pair_and_neighbor_transition_effect(monkeypatch):
+    from app.services.optimization_report import _change_explanation, _adjacent_transition_effect
+
+    teacher = SimpleNamespace(earliest_start_pair=2, max_floor=3)
+    before = item(1, 1, 1, "08:00", "09:30")
+    after = item(1, 1, 2, "09:40", "11:10")
+    old_room = SimpleNamespace(name="B4", floor=4)
+    new_room = SimpleNamespace(name="B2", floor=2)
+    reasons = _change_explanation(
+        before, after, teacher, old_room, new_room,
+        {"minutes": 8}, {"minutes": 3},
+    )
+    assert {reason["code"] for reason in reasons} == {
+        "earliest_pair_fixed", "max_floor_fixed", "adjacent_transitions_changed",
+    }
+    assert all(reason["verified"] for reason in reasons)
+
+
+def test_no_invented_improvement_when_transition_is_unknown():
+    from app.services.optimization_report import _change_explanation
+
+    old = item(1, 1, 1, "08:00", "09:30")
+    new = item(1, 1, 2, "08:00", "09:30")
+    room = SimpleNamespace(floor=2)
+    reasons = _change_explanation(
+        old, new, None, room, room,
+        {"minutes": None}, {"minutes": 4},
+    )
+    assert [reason["code"] for reason in reasons] == ["assignment_changed"]
+
+
+def test_adjacent_effect_counts_only_touches_and_is_not_global(monkeypatch):
+    monkeypatch.setattr(optimization_report, "room_in_active_scope", lambda room: True)
+    monkeypatch.setattr(optimization_report, "_transition_minutes", lambda *args: 4)
+    lessons = {
+        x: SimpleNamespace(teacher_id=10, subject_id=1) for x in range(1, 5)
+    }
+    entries = [
+        item(1, 1, 1, "08:00", "09:00"),
+        item(2, 2, 1, "09:10", "10:10"),
+        item(3, 3, 1, "10:20", "11:20"),
+        item(4, 4, 1, "11:30", "12:30"),
+    ]
+    stats = optimization_report._adjacent_transition_effect(
+        None, entries, 2, lessons, {1: SimpleNamespace(room_type="classroom")}
+    )
+    assert stats["transition_count"] == 2
+    assert stats["minutes"] == 8
