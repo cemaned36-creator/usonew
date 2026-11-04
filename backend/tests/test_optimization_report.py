@@ -113,7 +113,7 @@ def test_verified_earliest_pair_and_neighbor_transition_effect(monkeypatch):
 
     teacher = SimpleNamespace(earliest_start_pair=2, max_floor=3)
     before = item(1, 1, 1, "08:00", "09:30")
-    after = item(1, 1, 2, "09:40", "11:10")
+    after = item(1, 1, 2, "10:15", "11:50")
     old_room = SimpleNamespace(name="B4", floor=4)
     new_room = SimpleNamespace(name="B2", floor=2)
     reasons = _change_explanation(
