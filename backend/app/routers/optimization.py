@@ -1,4 +1,7 @@
 from datetime import time
+from typing import Literal
+from app.models.optimization_run import OptimizationRun
+from app.services.optimization_history import snapshot, record_run, serialize_run, prepare_restore, restore_run
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -326,17 +329,25 @@ def apply_optimization(
 
 
 
+        before = [snapshot(orm_by_id[entry_id], lessons) for entry_id in sorted(submitted)]
         for entry_id, change in submitted.items():
             orm_by_id[entry_id].room_id = change.new_room_id
             orm_by_id[entry_id].start_time = entries_by_id[entry_id].start_time
             orm_by_id[entry_id].end_time = entries_by_id[entry_id].end_time
 
+        after = [snapshot(orm_by_id[entry_id], lessons) for entry_id in sorted(submitted)]
+        selected_teacher = db.get(Teacher, payload.teacher_id) if payload.teacher_id else None
+        run = record_run(db, week_type=payload.week_type, teacher_id=payload.teacher_id,
+                         teacher_name=selected_teacher.name if selected_teacher else None,
+                         before=before, after=after, preview=current_preview)
+        history_id = run.id
         db.commit()
 
         return {
             "status": "success",
             "message": "Оптимизированное расписание сохранено.",
             "saved_count": len(submitted),
+            "history_id": history_id,
             "saved_to_database": True,
         }
 
@@ -349,3 +360,39 @@ def apply_optimization(
             status_code=500,
             detail="Не удалось сохранить оптимизацию. Изменения отменены.",
         ) from e
+
+
+@router.get("/history")
+def optimization_history(
+    week_type: Literal["odd", "even"],
+    teacher_id: int | None = Query(default=None, ge=1),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    query = db.query(OptimizationRun).filter(OptimizationRun.week_type == week_type)
+    if teacher_id is not None:
+        query = query.filter(OptimizationRun.teacher_id == teacher_id)
+    rows = query.order_by(OptimizationRun.id.desc()).offset(offset).limit(limit + 1).all()
+    return {"items": [serialize_run(row) for row in rows[:limit]], "has_more": len(rows) > limit}
+
+
+@router.get("/history/{run_id}/restore-preview")
+def restore_preview(
+    run_id: int,
+    week_type: Literal["odd", "even"],
+    teacher_id: int | None = Query(default=None, ge=1),
+    db: Session = Depends(get_db),
+):
+    run, _, before = prepare_restore(db, run_id, week_type, teacher_id)
+    return {"can_restore": True, "restored_count": len(before), "run": serialize_run(run)}
+
+
+@router.post("/history/{run_id}/restore")
+def restore_optimization(
+    run_id: int,
+    week_type: Literal["odd", "even"],
+    teacher_id: int | None = Query(default=None, ge=1),
+    db: Session = Depends(get_db),
+):
+    return restore_run(db, run_id, week_type, teacher_id)
