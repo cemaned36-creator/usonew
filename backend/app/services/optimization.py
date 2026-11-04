@@ -701,6 +701,7 @@ def _preview_optimization(
         participants=participants,
         teachers={teacher.id: teacher for teacher in db.query(Teacher).all()},
         subjects=subjects,
+        requirements=requirements,
         week_type=week_type,
         selected_teacher_id=teacher_id,
     )
