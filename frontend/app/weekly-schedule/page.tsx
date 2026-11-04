@@ -668,12 +668,17 @@ export default function WeeklySchedulePage() {
           </nav>
 
           <div className="border-t border-slate-200 p-4">
-            <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-sm font-medium text-slate-800">
-                University Schedule
+            <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold">
+                АИ
               </div>
-              <div className="mt-1 text-xs text-slate-400">
-                Управление расписанием
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">
+                  Администратор
+                </div>
+                <div className="truncate text-xs text-slate-400">
+                  admin@usurt.ru
+                </div>
               </div>
             </div>
           </div>
@@ -1173,10 +1178,6 @@ export default function WeeklySchedulePage() {
                 </button>
               </div>
             </section>}
-
-            <footer className="pb-2 text-center text-xs text-slate-400">
-              Оптимизатор расписания УрГУПС
-            </footer>
           </div>
         </main>
       </div>
