@@ -109,6 +109,14 @@ export type OptimizationDetailedReport = {
     impact?: "improved" | "worsened" | "mixed" | "unchanged" | "unknown";
     timetable?: GroupTimetable;
   }[];
+  student_impact?: { improved: number; worsened: number; mixed: number; unchanged: number; unknown: number };
+  student_warnings?: {
+    group_id: number;
+    group_name: string | null;
+    impact: string;
+    window_delta: number | null;
+    span_delta_minutes: number;
+  }[];
   changes: ReportChange[];
 };
 
@@ -190,6 +198,31 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
               Для части переходов отсутствует корректный маршрут или не хватает времени.
               Итоговые минуты и экономия не рассчитываются, чтобы не показывать ошибочные значения.
             </p>
+          )}
+          {report.student_impact && (
+            <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+              <h3 className="text-sm font-semibold text-slate-800">Влияние на расписания групп</h3>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800">Улучшено: {report.student_impact.improved}</span>
+                <span className="rounded-lg bg-rose-50 px-3 py-2 text-rose-800">Ухудшено: {report.student_impact.worsened}</span>
+                <span className="rounded-lg bg-slate-100 px-3 py-2">Без изменений: {report.student_impact.unchanged}</span>
+                <span className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800">Смешанный эффект: {report.student_impact.mixed}</span>
+                {report.student_impact.unknown > 0 && <span className="rounded-lg bg-slate-100 px-3 py-2">Неизвестно: {report.student_impact.unknown}</span>}
+              </div>
+              {!!report.student_warnings?.length && (
+                <div role="status" className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                  <p className="font-semibold">Есть ухудшения в расписаниях групп</p>
+                  {report.student_warnings.map(warning => (
+                    <p key={warning.group_id} className="mt-1">
+                      {warning.group_name ?? `Группа #${warning.group_id}`}: 
+                      {warning.window_delta != null && warning.window_delta > 0 ? ` +${warning.window_delta} окон` : ""}
+                      {warning.span_delta_minutes > 0 ? ` +${duration(warning.span_delta_minutes)} учебного времени` : ""}
+                    </p>
+                  ))}
+                  <p className="mt-2 text-amber-800">Это предупреждение, не запрет на сохранение. Условия преподавателей остаются приоритетными.</p>
+                </div>
+              )}
+            </div>
           )}
           <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
             <strong>Преподавателей с изменениями:</strong> {report.summary.affected_teachers}.

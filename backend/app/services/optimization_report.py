@@ -233,6 +233,29 @@ def build_optimization_report(
         lessons=lessons, rooms=rooms, teachers=teachers, subjects=subjects,
     )
 
+    # Advisory signals: do not block mandatory teacher constraint repairs.
+    student_impact = {
+        "improved": sum(row["impact"] == "improved" for row in groups_report),
+        "worsened": sum(row["impact"] == "worsened" for row in groups_report),
+        "mixed": sum(row["impact"] == "mixed" for row in groups_report),
+        "unchanged": sum(row["impact"] == "unchanged" for row in groups_report),
+        "unknown": sum(row["impact"] == "unknown" for row in groups_report),
+    }
+    student_warnings = [
+        {
+            "group_id": group["group_id"],
+            "group_name": group["group_name"],
+            "impact": group["impact"],
+            "window_delta": group["window_delta"],
+            "span_delta_minutes": group["span_delta_minutes"],
+        }
+        for group in groups_report
+        if (
+            (group["window_delta"] is not None and group["window_delta"] > 0)
+            or group["span_delta_minutes"] > 0
+        )
+    ]
+
     total_before = sum(row["before"]["minutes"] for row in teacher_report
                        if row["before"]["minutes"] is not None)
     total_after = sum(row["after"]["minutes"] for row in teacher_report
@@ -260,5 +283,7 @@ def build_optimization_report(
         },
         "teachers": teacher_report,
         "groups": groups_report,
+        "student_impact": student_impact,
+        "student_warnings": student_warnings,
         "changes": changes,
     }
