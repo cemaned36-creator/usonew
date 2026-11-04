@@ -35,8 +35,8 @@ def test_report_counts_shared_lesson_once_and_uses_all_impacted_groups(monkeypat
     }
     before = [item(1, 1, 1, "08:00", "09:30"),
               item(2, 2, 2, "09:40", "11:10")]
-    after = [item(1, 1, 1, "08:00", "09:30"),
-             item(2, 2, 1, "09:40", "11:10")]
+    after = [item(1, 1, 2, "08:00", "09:30"),
+             item(2, 2, 2, "09:40", "11:10")]
     report = optimization_report.build_optimization_report(
         None, before_entries=before, after_entries=after, lessons=lessons,
         rooms=rooms, participants=participants,
@@ -46,7 +46,8 @@ def test_report_counts_shared_lesson_once_and_uses_all_impacted_groups(monkeypat
     )
     assert report["summary"]["changed_entries"] == 1
     assert report["summary"]["room_changes"] == 1
-    assert report["summary"]["affected_groups"] == 1
+    assert report["summary"]["affected_groups"] == 2
+    assert {group["group_id"] for group in report["groups"]} == {11, 12}
     assert report["summary"]["time_saved"] == 5
     assert report["teachers"][0]["time_saved"] == 5
 
