@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { History, LoaderCircle, RotateCcw } from "lucide-react";
+import OptimizationReport from "@/components/OptimizationReport";
+import type { OptimizationDetailedReport } from "@/components/OptimizationReport";
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
@@ -9,7 +11,7 @@ type Assignment = { id: number; lesson_id: number; weekday: number; room_id: num
 type Run = {
   id: number; created_at: string; teacher_name: string | null; teacher_id: number | null;
   restored_at: string | null; changes_count: number;
-  metrics: { transition_time_before: number | null; transition_time_after: number | null };
+  metrics: { transition_time_before: number | null; transition_time_after: number | null; detailed_report?: OptimizationDetailedReport | null };
   changes: { before: Assignment; after: Assignment }[];
 };
 type Props = {
@@ -28,6 +30,7 @@ export default function OptimizationHistory({ weekType, teacherId, revision, dis
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<number | null>(null);
   const [confirmation, setConfirmation] = useState<Run | null>(null);
+  const [openReportId, setOpenReportId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [reload, setReload] = useState(0);
@@ -37,7 +40,7 @@ export default function OptimizationHistory({ weekType, teacherId, revision, dis
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError(""); setItems([]); setConfirmation(null);
+    setLoading(true); setError(""); setItems([]); setConfirmation(null); setOpenReportId(null);
     fetch(`${API}/optimization/history?${scope}&offset=${offset}&limit=10`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Не удалось загрузить историю: HTTP ${response.status}`);
@@ -84,6 +87,21 @@ export default function OptimizationHistory({ weekType, teacherId, revision, dis
           <div><h3 className="text-sm font-semibold">#{run.id} · {dateLabel(run.created_at)}</h3><p className="mt-1 text-sm">{run.teacher_name ?? (run.teacher_id ? `Преподаватель #${run.teacher_id}` : "Все преподаватели")} · {run.changes_count} изменений</p><p className="mt-1 text-xs text-slate-500">Переходы на момент расчёта: {minutes(run.metrics.transition_time_before)} → {minutes(run.metrics.transition_time_after)}</p></div>
           {run.restored_at ? <p className="text-xs text-slate-500">Отменено {dateLabel(run.restored_at)}</p> : <button type="button" disabled={disabled || working !== null || confirmation !== null} onClick={() => restore(run, false)} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium disabled:opacity-50">{working === run.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}Проверить возврат</button>}
         </div>
+        {run.metrics?.detailed_report && (
+          <div className="mt-3">
+            <button type="button" aria-expanded={openReportId === run.id}
+              onClick={() => setOpenReportId(openReportId === run.id ? null : run.id)}
+              className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50">
+              {openReportId === run.id ? "Скрыть подробный отчёт" : "Открыть подробный отчёт"}
+            </button>
+            {openReportId === run.id && (
+              <div className="mt-3">
+                <OptimizationReport report={run.metrics.detailed_report} />
+                <p className="mt-2 text-xs text-slate-500">Исторический снимок на момент расчёта. Последующие изменения расписания на эти показатели не влияют.</p>
+              </div>
+            )}
+          </div>
+        )}
         <details className="mt-3 text-sm"><summary className="cursor-pointer text-slate-600">Посмотреть изменения</summary><ul className="mt-2 max-h-64 space-y-2 overflow-y-auto">{run.changes.map(({ before, after }) => <li key={before.id} className="rounded-lg bg-slate-50 p-2">{DAYS[before.weekday]} · занятие #{before.lesson_id}: {before.start_time.slice(0, 5)}–{before.end_time.slice(0, 5)}, {roomName(before.room_id)} → {after.start_time.slice(0, 5)}–{after.end_time.slice(0, 5)}, {roomName(after.room_id)}</li>)}</ul></details>
       </article>)}
     </div>}
