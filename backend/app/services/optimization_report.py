@@ -8,6 +8,7 @@ from collections import defaultdict
 
 from app.services.optimization import _transition_minutes, _is_sports_entry
 from app.services.room_scope import room_in_active_scope
+from app.services.teacher_conditions import room_allowed, time_allowed
 
 
 def _time(value):
@@ -55,6 +56,74 @@ def _delta(before, after):
     return after - before
 
 
+def _adjacent_transition_effect(db, entries, entry_id, lessons, rooms):
+    """Measure only transitions touching this entry, in one teacher-day snapshot.
+
+    Before/after differences are descriptive, not independently additive:
+    moving two adjacent lessons can affect their shared transition twice.
+    """
+    by_id = {entry.id: entry for entry in entries}
+    focus = by_id[entry_id]
+    teacher_id = lessons[focus.lesson_id].teacher_id
+    day = [
+        entry for entry in entries
+        if entry.weekday == focus.weekday
+        and lessons[entry.lesson_id].teacher_id == teacher_id
+        and room_in_active_scope(rooms.get(entry.room_id))
+    ]
+    day.sort(key=lambda entry: (entry.start_time, entry.id))
+    index = next(i for i, entry in enumerate(day) if entry.id == entry_id)
+    links = []
+    if index > 0:
+        links.append((day[index - 1], day[index]))
+    if index + 1 < len(day):
+        links.append((day[index], day[index + 1]))
+    values = [_transition_minutes(db, left, right, lessons, rooms) for left, right in links]
+    return {
+        "minutes": sum(values) if all(value is not None for value in values) else None,
+        "unknown_transitions": sum(value is None for value in values),
+        "transition_count": len(links),
+    }
+
+
+def _change_explanation(old, new, teacher, old_room, new_room, before_touch, after_touch):
+    """Explain verified facts, without claiming why a search step chose a candidate."""
+    reasons = []
+    if teacher is not None and not time_allowed(old.start_time, teacher) and time_allowed(new.start_time, teacher):
+        pair = getattr(teacher, "earliest_start_pair", None)
+        reasons.append({
+            "code": "earliest_pair_fixed",
+            "verified": True,
+            "text": f"Исправлено начало занятия раньше разрешённой пары №{pair}.",
+        })
+    if teacher is not None and not room_allowed(old_room, teacher) and room_allowed(new_room, teacher):
+        floor = getattr(teacher, "max_floor", None)
+        reasons.append({
+            "code": "max_floor_fixed",
+            "verified": True,
+            "text": f"Исправлено превышение разрешённого этажа {floor}.",
+        })
+    before_min = before_touch["minutes"]
+    after_min = after_touch["minutes"]
+    if before_min is not None and after_min is not None and before_min != after_min:
+        difference = before_min - after_min
+        reasons.append({
+            "code": "adjacent_transitions_changed",
+            "verified": True,
+            "text": (
+                f"Сумма соседних переходов {'сократилась' if difference > 0 else 'увеличилась'} "
+                f"на {abs(difference)} мин. Это наблюдаемый эффект, не доказательство причины выбора."
+            ),
+        })
+    if not reasons:
+        reasons.append({
+            "code": "assignment_changed",
+            "verified": True,
+            "text": "Назначение изменено. Точная причина выбора кандидата алгоритмом не записана.",
+        })
+    return reasons
+
+
 def build_optimization_report(
     db, *, before_entries, after_entries, lessons, rooms, participants,
     teachers, subjects, requirements, week_type, selected_teacher_id=None,
@@ -88,6 +157,12 @@ def build_optimization_report(
         groups = participants.get(old.lesson_id, [])
         room_changed = old.room_id != new.room_id
         time_changed = (old.start_time, old.end_time) != (new.start_time, new.end_time)
+        before_touch = _adjacent_transition_effect(db, before_entries, entry_id, lessons, rooms)
+        after_touch = _adjacent_transition_effect(db, after_entries, entry_id, lessons, rooms)
+        explanation = _change_explanation(
+            old, new, teachers.get(lesson.teacher_id),
+            rooms[old.room_id], rooms[new.room_id], before_touch, after_touch,
+        )
         changed_rooms += int(room_changed)
         changed_times += int(time_changed)
         teacher_change_ids[lesson.teacher_id].add(entry_id)
@@ -119,9 +194,16 @@ def build_optimization_report(
                 "start_time": _time(new.start_time),
                 "end_time": _time(new.end_time),
             },
-            # Explicitly distinguish inferred classification from exact optimizer reasons.
-            "reason": "teacher_conditions_or_transition_optimization",
-            "reason_verified": False,
+            # Verified observable effects, not optimizer decision provenance.
+            "reasons": explanation,
+            "adjacent_transitions": {
+                "before": before_touch,
+                "after": after_touch,
+                "saved_minutes": _delta(after_touch["minutes"], before_touch["minutes"]),
+                "additive": False,
+            },
+            "reason": explanation[0]["code"],
+            "reason_verified": all(item["verified"] for item in explanation),
         })
 
     teacher_ids = sorted(

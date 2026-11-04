@@ -22,6 +22,13 @@ type ReportChange = {
   after: { room_id: number; room_name: string; start_time: string; end_time: string };
   reason: string;
   reason_verified: boolean;
+  reasons?: { code: string; verified: boolean; text: string }[];
+  adjacent_transitions?: {
+    before: TransitionMetrics;
+    after: TransitionMetrics;
+    saved_minutes: number | null;
+    additive: boolean;
+  };
 };
 
 export type OptimizationDetailedReport = {
@@ -228,10 +235,25 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                 <ArrowRight className="mx-auto hidden h-4 w-4 text-slate-400 sm:block" />
                 <Assignment label="После" room={change.after.room_name} start={change.after.start_time} end={change.after.end_time} />
               </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Основание: оптимизация с учётом условий преподавателя и логистики переходов.
-                Точная причина конкретного назначения пока не фиксируется алгоритмом.
-              </p>
+              {change.reasons?.length ? (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <h4 className="text-xs font-semibold text-slate-700">Проверяемые причины и результаты</h4>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-600">
+                    {change.reasons.map((reason, index) => <li key={`${reason.code}-${index}`}>• {reason.text}</li>)}
+                  </ul>
+                  {change.adjacent_transitions && (
+                    <div className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-600">
+                      <p>Переходы непосредственно до и после занятия: {metric(change.adjacent_transitions.before.minutes)} → {metric(change.adjacent_transitions.after.minutes)}.</p>
+                      <p className="mt-1 text-slate-500">Эти локальные показатели могут пересекаться с показателями соседних занятий и не суммируются.</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">
+                  Оптимизация с учётом условий преподавателя и логистики переходов.
+                  Причина конкретного назначения в старом отчёте не зафиксирована.
+                </p>
+              )}
             </article>
           ))}
           {(teacherFilter || groupFilter || typeFilter !== "all" || dayFilter !== "all") && (
