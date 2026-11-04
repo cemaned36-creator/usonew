@@ -280,3 +280,34 @@ def test_group_timetable_includes_unchanged_lessons_and_highlights_changed():
     assert after_rows[1]["subject_name"] == "Математика"
     assert after_rows[1]["pair_number"] == 2
     assert len(timetable["before"]) == len(timetable["after"]) == 7
+
+
+def test_student_impact_warns_on_window_increase(monkeypatch):
+    monkeypatch.setattr(optimization_report, "room_in_active_scope", lambda room: True)
+    monkeypatch.setattr(optimization_report, "_transition_minutes", lambda *args: 0)
+    lessons = {
+        1: SimpleNamespace(teacher_id=10, subject_id=1),
+        2: SimpleNamespace(teacher_id=20, subject_id=1),
+    }
+    before = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 1, "10:15", "11:50"),
+    ]
+    after = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 1, "12:00", "13:35"),
+    ]
+    report = optimization_report.build_optimization_report(
+        None, before_entries=before, after_entries=after,
+        lessons=lessons,
+        rooms={1: SimpleNamespace(name="B1", room_type="classroom")},
+        participants={
+            1: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+            2: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+        },
+        teachers={}, subjects={}, requirements={}, week_type="odd",
+    )
+    assert report["student_impact"]["worsened"] == 1
+    assert len(report["student_warnings"]) == 1
+    assert report["student_warnings"][0]["window_delta"] == 1
+    assert report["student_warnings"][0]["span_delta_minutes"] == 105
