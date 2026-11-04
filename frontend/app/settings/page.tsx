@@ -12,7 +12,7 @@ import {
   Settings,
   Info,
 } from "lucide-react";
-
+import { usePathname } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import { useAppearance } from "@/components/Appearance";
 
