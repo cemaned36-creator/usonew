@@ -321,7 +321,7 @@ export default function Home() {
                 </div>
 
                 <div className="truncate text-xs text-slate-400">
-                  admin@university.ru
+                  admin@usurt.ru
                 </div>
 
               </div>
