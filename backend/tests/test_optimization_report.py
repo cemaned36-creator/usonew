@@ -156,3 +156,89 @@ def test_adjacent_effect_counts_only_touches_and_is_not_global(monkeypatch):
     )
     assert stats["transition_count"] == 2
     assert stats["minutes"] == 8
+
+
+def test_group_quality_windows_and_span_improve_when_gap_removed():
+    from app.services.group_schedule_quality import build_group_quality
+
+    participants = {
+        1: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+        2: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+    }
+    before = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 1, "12:00", "13:35"),
+    ]
+    after = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 1, "10:15", "11:50"),
+    ]
+    group = build_group_quality(before, after, participants, {11: {2}})[0]
+    assert group["before"]["windows"] == 1
+    assert group["after"]["windows"] == 0
+    assert group["before"]["days"][0]["span_minutes"] == 305
+    assert group["after"]["days"][0]["span_minutes"] == 200
+    assert group["window_delta"] == -1
+    assert group["span_delta_minutes"] == -105
+    assert group["impact"] == "improved"
+
+
+def test_group_quality_subgroups_share_slot_without_fake_windows():
+    from app.services.group_schedule_quality import build_group_quality
+
+    participants = {
+        1: [{"group_id": 11, "group_name": "G11", "subgroup_number": 1}],
+        2: [{"group_id": 11, "group_name": "G11", "subgroup_number": 2}],
+        3: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+    }
+    entries = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 1, "08:30", "10:05"),
+        item(3, 3, 1, "10:15", "11:50"),
+    ]
+    group = build_group_quality(entries, entries, participants, {11: {1}})[0]
+    assert group["before"]["lesson_entries"] == 3
+    assert group["before"]["occupied_pairs"] == 2
+    assert group["before"]["windows"] == 0
+    assert group["impact"] == "unchanged"
+
+
+def test_group_quality_includes_shared_and_sports_entries():
+    from app.services.group_schedule_quality import build_group_quality
+
+    participants = {
+        1: [
+            {"group_id": 11, "group_name": "G11", "subgroup_number": 0},
+            {"group_id": 12, "group_name": "G12", "subgroup_number": 0},
+        ],
+        2: [{"group_id": 12, "group_name": "G12", "subgroup_number": 0}],
+    }
+    before = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 9, "12:00", "13:35"),
+    ]
+    after = [
+        item(1, 1, 1, "10:15", "11:50"),
+        item(2, 2, 9, "12:00", "13:35"),
+    ]
+    groups = build_group_quality(before, after, participants, {11: {1}, 12: {1}})
+    one, two = groups
+    assert one["before"]["windows"] == 0
+    assert two["before"]["windows"] == 1
+    assert two["after"]["windows"] == 0
+
+
+def test_group_quality_unrecognized_pair_is_not_fake_zero():
+    from app.services.group_schedule_quality import build_group_quality
+
+    participants = {
+        1: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+        2: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+    }
+    entries = [
+        item(1, 1, 1, "08:00", "09:30"),
+        item(2, 2, 1, "12:00", "13:35"),
+    ]
+    group = build_group_quality(entries, entries, participants, {11: {1}})[0]
+    assert group["before"]["windows"] is None
+    assert group["impact"] == "unknown"
