@@ -5,10 +5,12 @@ on:
     paths:
       - "backend/app/services/optimization.py"
       - "backend/app/services/optimization_report.py"
+      - "backend/app/services/optimization_history.py"
       - "backend/tests/test_optimization_report.py"
       - "frontend/app/optimization/page.tsx"
       - "frontend/app/layout.tsx"
       - "frontend/components/OptimizationReport.tsx"
+      - "frontend/components/OptimizationHistory.tsx"
       - ".github/workflows/optimization-report-check.yml"
   workflow_dispatch:
 
@@ -42,3 +44,4 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm run build
