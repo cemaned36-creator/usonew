@@ -569,6 +569,15 @@ def _preview_optimization(
         for item in entries
     ]
 
+    # A complete baseline copy for reporting (including non-target teachers).
+    report_before_entries = [
+        ScheduleItem(
+            id=item.id, lesson_id=item.lesson_id, weekday=item.weekday,
+            room_id=item.room_id, start_time=item.start_time, end_time=item.end_time,
+        )
+        for item in all_entries
+    ]
+
     # 1. Рассчитываем время переходов до оптимизации.
     before_total = _teacher_transition_total(
         original_entries, lessons, rooms, db
@@ -674,6 +683,28 @@ def _preview_optimization(
     if any(teacher.prefer_near_entrance for teacher in teachers.values()) and not distances:
         warnings.append("Нет маршрутов от входа: предпочтение близости сейчас не учитывается.")
 
+    # Additive analytics; legacy response fields and apply payload are unchanged.
+    from app.models.subject import Subject
+    from app.services.optimization_report import build_optimization_report
+
+    subject_ids = {lesson.subject_id for lesson in lessons.values()}
+    subjects = {
+        subject.id: subject
+        for subject in db.query(Subject).filter(Subject.id.in_(subject_ids)).all()
+    }
+    detailed_report = build_optimization_report(
+        db,
+        before_entries=report_before_entries,
+        after_entries=all_entries,
+        lessons=lessons,
+        rooms=rooms,
+        participants=participants,
+        teachers={teacher.id: teacher for teacher in db.query(Teacher).all()},
+        subjects=subjects,
+        week_type=week_type,
+        selected_teacher_id=teacher_id,
+    )
+
     return {
         "constraint_issues": issues,
         "warnings": warnings,
@@ -688,6 +719,7 @@ def _preview_optimization(
         "week_type": week_type,
         "teacher_id": teacher_id,
         "eligible_entries_count": len(entries),
+        "detailed_report": detailed_report,
     }
 
 def preview_optimization(
