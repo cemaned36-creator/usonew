@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import OptimizationHistory from "@/components/OptimizationHistory";
 import BrandLogo from "@/components/BrandLogo";
 import {
   AlertCircle,
@@ -98,6 +99,7 @@ type OptimizationResult = {
 type Message = { kind: "success" | "error" | "info"; text: string };
 
 export default function OptimizationPage() {
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [rooms, setRooms] = useState<NamedOption[]>([]);
@@ -291,6 +293,7 @@ export default function OptimizationPage() {
             : `Не удалось сохранить изменения: HTTP ${response.status}`
         );
       }
+      setHistoryRevision((value) => value + 1);
       await loadData();
       setResult(null);
       setConfirmStep(0);
@@ -653,6 +656,16 @@ export default function OptimizationPage() {
                 )}
               </>
             )}
+            {!pendingTeacherSelection && <OptimizationHistory
+              key={`${selectedWeekType}:${selectedTeacherId}`}
+              weekType={selectedWeekType} teacherId={selectedTeacherId}
+              revision={historyRevision} disabled={running || saving || loadingData || confirmStep > 0}
+              rooms={rooms} onBusyChange={setSaving}
+              onRestored={async () => {
+                setResult(null); setConfirmStep(0); setMessage(null);
+                await loadData();
+              }}
+            />}
           </div>
         </main>
       </div>

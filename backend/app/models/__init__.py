@@ -16,3 +16,4 @@ from .equipment_profile import (
     RoomEquipmentProfile,
     LessonEquipmentProfile,
 )
+from .optimization_run import OptimizationRun
