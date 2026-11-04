@@ -461,9 +461,18 @@ export default function OptimizationPage() {
             </div>
 </nav>
           <div className="border-t border-slate-200 p-4">
-            <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-sm font-medium text-slate-800">Расписание УрГУПС</div>
-              <div className="mt-1 text-xs text-slate-400">Управление расписанием</div>
+            <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold">
+                АИ
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">
+                  Администратор
+                </div>
+                <div className="truncate text-xs text-slate-400">
+                  admin@usurt.ru
+                </div>
+              </div>
             </div>
           </div>
         </aside>
@@ -546,17 +555,14 @@ export default function OptimizationPage() {
                   </div>
                 )}
 
-                <p className="mt-2 text-xs text-slate-500">
-                  Учитываются условия выбранного преподавателя: время начала, этаж и близость ко входу.
-                  Занятость помещений проверяется по всему расписанию.
-                </p>
+                
               </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-base font-semibold">Запуск оптимизации — {selectedWeekType === "odd" ? "нечётная неделя" : "чётная неделя"}</h2>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
                     Система подберёт подходящие аудитории и сравнит время переходов{selectedTeacherId ? " выбранного преподавателя" : " преподавателей"}.
-                    База данных не изменится, пока ты не подтвердишь результат дважды.
+                    База данных не изменится, пока Вы не подтвердите результат.
                   </p>
                 </div>
                 <button
