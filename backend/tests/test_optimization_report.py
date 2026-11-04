@@ -71,3 +71,38 @@ def test_unknown_transition_is_not_counted_as_zero(monkeypatch):
     assert report["summary"]["transition_metrics_complete"] is False
     assert report["summary"]["time_saved"] is None
     assert report["teachers"][0]["before"]["unknown_transitions"] == 1
+
+
+def test_history_keeps_detailed_report_without_changing_old_metrics():
+    from app.services.optimization_history import record_run, serialize_run
+
+    class FakeSession:
+        def __init__(self):
+            self.saved = None
+
+        def add(self, row):
+            self.saved = row
+
+        def flush(self):
+            self.saved.id = 42
+
+    db = FakeSession()
+    report = {
+        "version": 1,
+        "summary": {"changed_entries": 1},
+        "teachers": [], "groups": [], "changes": [],
+    }
+    run = record_run(
+        db, week_type="odd", teacher_id=10, teacher_name="Teacher",
+        before=[{"id": 1}], after=[{"id": 1}],
+        preview={
+            "transition_time_before": 9,
+            "transition_time_after": 4,
+            "time_saved": 5,
+            "detailed_report": report,
+        },
+    )
+    assert run.metrics["time_saved"] == 5
+    assert run.metrics["detailed_report"] == report
+    serialized = serialize_run(run)
+    assert serialized["metrics"]["detailed_report"]["version"] == 1
