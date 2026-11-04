@@ -57,7 +57,7 @@ def _delta(before, after):
 
 def build_optimization_report(
     db, *, before_entries, after_entries, lessons, rooms, participants,
-    teachers, subjects, week_type, selected_teacher_id=None,
+    teachers, subjects, requirements, week_type, selected_teacher_id=None,
 ):
     """Build additive preview analytics without changing the optimization plan."""
     original = {entry.id: entry for entry in before_entries}
@@ -67,7 +67,7 @@ def build_optimization_report(
     eligible = {
         entry_id for entry_id, entry in original.items()
         if room_in_active_scope(rooms.get(entry.room_id))
-        and not _is_sports_entry(entry, rooms, {})
+        and not _is_sports_entry(entry, rooms, requirements)
     }
     before = [original[entry_id] for entry_id in sorted(eligible)]
     after = [proposed[entry_id] for entry_id in sorted(eligible)]
