@@ -242,3 +242,41 @@ def test_group_quality_unrecognized_pair_is_not_fake_zero():
     group = build_group_quality(entries, entries, participants, {11: {1}})[0]
     assert group["before"]["windows"] is None
     assert group["impact"] == "unknown"
+
+
+def test_group_timetable_includes_unchanged_lessons_and_highlights_changed():
+    from app.services.group_schedule_quality import build_group_quality
+
+    participants = {
+        1: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+        2: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+    }
+    old = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 1, "12:00", "13:35"),
+    ]
+    new = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 2, "10:15", "11:50"),
+    ]
+    meta = {
+        1: SimpleNamespace(teacher_id=5, subject_id=9),
+        2: SimpleNamespace(teacher_id=5, subject_id=9),
+    }
+    groups = build_group_quality(
+        old, new, participants, {11: {2}},
+        lessons=meta, rooms={1: SimpleNamespace(name="Б1-11"), 2: SimpleNamespace(name="Б2-24")},
+        teachers={5: SimpleNamespace(name="Преподаватель")},
+        subjects={9: SimpleNamespace(name="Математика")},
+    )
+    timetable = groups[0]["timetable"]
+    before_rows = timetable["before"][0]["lessons"]
+    after_rows = timetable["after"][0]["lessons"]
+    assert len(before_rows) == len(after_rows) == 2
+    assert [entry["changed"] for entry in before_rows] == [False, True]
+    assert [entry["changed"] for entry in after_rows] == [False, True]
+    assert before_rows[1]["room_name"] == "Б1-11"
+    assert after_rows[1]["room_name"] == "Б2-24"
+    assert after_rows[1]["subject_name"] == "Математика"
+    assert after_rows[1]["pair_number"] == 2
+    assert len(timetable["before"]) == len(timetable["after"]) == 7

@@ -31,6 +31,28 @@ type ReportChange = {
   };
 };
 
+type GroupScheduleLesson = {
+  entry_id: number;
+  lesson_id: number;
+  pair_number: number | null;
+  start_time: string;
+  end_time: string;
+  room_name: string | null;
+  teacher_name: string | null;
+  subject_name: string | null;
+  changed: boolean;
+};
+
+type GroupScheduleDay = {
+  weekday: number;
+  lessons: GroupScheduleLesson[];
+};
+
+type GroupTimetable = {
+  before: GroupScheduleDay[];
+  after: GroupScheduleDay[];
+};
+
 type GroupDayQuality = {
   weekday: number;
   lessons: number;
@@ -85,6 +107,7 @@ export type OptimizationDetailedReport = {
     window_delta?: number | null;
     span_delta_minutes?: number;
     impact?: "improved" | "worsened" | "mixed" | "unchanged" | "unknown";
+    timetable?: GroupTimetable;
   }[];
   changes: ReportChange[];
 };
@@ -97,6 +120,11 @@ const tabs: { id: Tab; title: string }[] = [
   { id: "groups", title: "Группы" },
   { id: "changes", title: "Журнал изменений" },
 ];
+const duration = (minutes: number) => {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} ч` : hours === 0 ? `${rest} мин` : `${hours} ч ${rest} мин`;
+};
 const metric = (minutes: number | null) => minutes == null ? "Не рассчитано" : `${minutes} мин`;
 const savings = (value: number | null) =>
   value == null ? "Не рассчитано" : value > 0 ? `−${value} мин` : value < 0 ? `+${Math.abs(value)} мин` : "Без изменений";
@@ -227,9 +255,20 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <SummaryMetric label="Окон до" value={group.before.windows == null ? "—" : String(group.before.windows)} />
                     <SummaryMetric label="Окон после" value={group.after.windows == null ? "—" : String(group.after.windows)} />
-                    <SummaryMetric label="Учебный день, сумма до" value={metric(group.before.span_minutes)} />
-                    <SummaryMetric label="Учебный день, сумма после" value={metric(group.after.span_minutes)} />
+                    <SummaryMetric label="Учебный день, сумма до" value={duration(group.before.span_minutes)} />
+                    <SummaryMetric label="Учебный день, сумма после" value={duration(group.after.span_minutes)} />
                   </div>
+                  {group.timetable && (
+                    <details className="rounded-xl border border-slate-200 p-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+                        Сравнить расписание: слева до, справа после
+                      </summary>
+                      <div className="mt-3 grid items-start gap-3 2xl:grid-cols-2">
+                        <GroupTimetableColumn title="До оптимизации" days={group.timetable.before} optimized={false} />
+                        <GroupTimetableColumn title="После оптимизации" days={group.timetable.after} optimized />
+                      </div>
+                    </details>
+                  )}
                   <details className="rounded-xl border border-slate-200 p-3">
                     <summary className="cursor-pointer text-sm font-medium text-slate-700">Сравнение по дням недели</summary>
                     <div className="mt-3 space-y-2">
@@ -240,7 +279,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                           <div key={day.weekday} className="rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
                             <p className="font-semibold">{DAYS[day.weekday]}</p>
                             <p className="mt-1">Окна: {day.windows ?? "—"} → {next.windows ?? "—"}</p>
-                            <p>Продолжительность: {metric(day.span_minutes)} → {metric(next.span_minutes)}</p>
+                            <p>Продолжительность: {duration(day.span_minutes)} → {duration(next.span_minutes)}</p>
                             <p>Первая / последняя пара: {day.first_pair ?? "—"} / {day.last_pair ?? "—"} → {next.first_pair ?? "—"} / {next.last_pair ?? "—"}</p>
                           </div>
                         );
@@ -353,6 +392,53 @@ function Assignment({ label, room, start, end }: { label: string; room: string; 
       <span className="text-xs font-semibold text-slate-500">{label}</span>
       <p className="mt-1 flex items-center gap-1 text-sm font-medium"><Clock3 className="h-3.5 w-3.5" />{start}–{end}</p>
       <p className="mt-1 flex items-center gap-1 text-sm text-slate-600"><DoorOpen className="h-3.5 w-3.5" />{room}</p>
+    </div>
+  );
+}
+
+function GroupTimetableColumn({ title, days, optimized }: {
+  title: string;
+  days: GroupScheduleDay[];
+  optimized: boolean;
+}) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <h4 className={`border-b border-slate-200 px-3 py-3 text-sm font-semibold ${
+        optimized ? "bg-emerald-50 text-emerald-800" : "bg-slate-50 text-slate-800"
+      }`}>{title}</h4>
+      <div className="space-y-3 p-2 sm:p-3">
+        {days.map(day => (
+          <section key={day.weekday} className="overflow-hidden rounded-xl border border-slate-100">
+            <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
+              <span className="text-xs font-semibold">{DAYS[day.weekday] ?? day.weekday}</span>
+              <span className="text-xs text-slate-500">{day.lessons.length} занятий</span>
+            </div>
+            {!day.lessons.length ? (
+              <p className="px-3 py-3 text-xs text-slate-400">Занятий нет</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {day.lessons.map(lesson => (
+                  <div key={lesson.entry_id} className={`grid grid-cols-[60px_minmax(0,1fr)] gap-3 px-3 py-3 ${
+                    lesson.changed ? (optimized ? "bg-emerald-50" : "bg-amber-50") : ""
+                  }`}>
+                    <div className="text-xs">
+                      <p className="font-semibold">{lesson.pair_number == null ? "—" : `${lesson.pair_number}-я пара`}</p>
+                      <p className="mt-1 text-slate-600">{lesson.start_time}</p>
+                      <p className="text-slate-400">{lesson.end_time}</p>
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <p className="break-words text-sm font-semibold">{lesson.subject_name ?? `Занятие #${lesson.lesson_id}`}</p>
+                      <p className="break-words text-xs text-slate-500">{lesson.teacher_name ?? "Преподаватель не указан"}</p>
+                      <p className="text-xs font-medium text-slate-700">Аудитория: {lesson.room_name ?? "—"}</p>
+                      {lesson.changed && <p className="text-xs font-semibold text-emerald-800">Изменено</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

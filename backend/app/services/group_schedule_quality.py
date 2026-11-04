@@ -73,7 +73,35 @@ def _week_stats(day_map):
     }
 
 
-def build_group_quality(before_entries, after_entries, participants, group_change_ids):
+def _schedule_days(day_map, lessons, rooms, teachers, subjects, changed_ids):
+    """Full, stable lesson assignments for side-by-side timetable viewing."""
+    result = []
+    for weekday in range(7):
+        rows = []
+        for entry in sorted(day_map.get(weekday, []), key=lambda e: (e.start_time, e.id)):
+            lesson = lessons.get(entry.lesson_id)
+            room = rooms.get(entry.room_id)
+            teacher = teachers.get(lesson.teacher_id) if lesson else None
+            subject = subjects.get(lesson.subject_id) if lesson else None
+            rows.append({
+                "entry_id": entry.id,
+                "lesson_id": entry.lesson_id,
+                "start_time": entry.start_time.strftime("%H:%M"),
+                "end_time": entry.end_time.strftime("%H:%M"),
+                "pair_number": get_lesson_pair(entry.start_time, entry.end_time),
+                "room_name": room.name if room else None,
+                "teacher_name": getattr(teacher, "name", None),
+                "subject_name": getattr(subject, "name", None),
+                "changed": entry.id in changed_ids,
+            })
+        result.append({"weekday": weekday, "lessons": rows})
+    return result
+
+
+def build_group_quality(
+    before_entries, after_entries, participants, group_change_ids,
+    *, lessons=None, rooms=None, teachers=None, subjects=None,
+):
     before_days = _days(before_entries, participants)
     after_days = _days(after_entries, participants)
     group_names = {
@@ -113,5 +141,15 @@ def build_group_quality(before_entries, after_entries, participants, group_chang
             "window_delta": window_delta,
             "span_delta_minutes": span_delta,
             "impact": impact,
+            "timetable": {
+                "before": _schedule_days(
+                    before_days.get(group_id, {}), lessons or {}, rooms or {},
+                    teachers or {}, subjects or {}, group_change_ids[group_id]
+                ),
+                "after": _schedule_days(
+                    after_days.get(group_id, {}), lessons or {}, rooms or {},
+                    teachers or {}, subjects or {}, group_change_ids[group_id]
+                ),
+            },
         })
     return groups

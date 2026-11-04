@@ -229,7 +229,8 @@ def build_optimization_report(
     # teacher walking-time scope. All shared/subgroup pairs are deduplicated
     # at group-slot level in the new metric module.
     groups_report = build_group_quality(
-        before_entries, after_entries, participants, group_change_ids
+        before_entries, after_entries, participants, group_change_ids,
+        lessons=lessons, rooms=rooms, teachers=teachers, subjects=subjects,
     )
 
     total_before = sum(row["before"]["minutes"] for row in teacher_report
