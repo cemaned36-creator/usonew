@@ -9,6 +9,7 @@ from collections import defaultdict
 from app.services.optimization import _transition_minutes, _is_sports_entry
 from app.services.room_scope import room_in_active_scope
 from app.services.teacher_conditions import room_allowed, time_allowed
+from app.services.group_schedule_quality import build_group_quality
 
 
 def _time(value):
@@ -224,18 +225,12 @@ def build_optimization_report(
             "time_saved": _delta(a["minutes"], b["minutes"]),
         })
 
-    groups_report = []
-    group_names = {
-        group["group_id"]: group["group_name"]
-        for group_list in participants.values() for group in group_list
-    }
-    for group_id, ids in sorted(group_change_ids.items()):
-        groups_report.append({
-            "group_id": group_id,
-            "group_name": group_names.get(group_id),
-            "changes_count": len(ids),
-            "entry_ids": sorted(ids),
-        })
+    # Group quality uses the full timetable (including gym), not the
+    # teacher walking-time scope. All shared/subgroup pairs are deduplicated
+    # at group-slot level in the new metric module.
+    groups_report = build_group_quality(
+        before_entries, after_entries, participants, group_change_ids
+    )
 
     total_before = sum(row["before"]["minutes"] for row in teacher_report
                        if row["before"]["minutes"] is not None)
