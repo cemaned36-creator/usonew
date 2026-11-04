@@ -40,7 +40,7 @@ def test_report_counts_shared_lesson_once_and_uses_all_impacted_groups(monkeypat
     report = optimization_report.build_optimization_report(
         None, before_entries=before, after_entries=after, lessons=lessons,
         rooms=rooms, participants=participants,
-        teachers={10: SimpleNamespace(name="Teacher")},
+        teachers={10: SimpleNamespace(name="Teacher")}, requirements={},
         subjects={1: SimpleNamespace(name="Subject")},
         week_type="odd", selected_teacher_id=10,
     )
@@ -65,7 +65,7 @@ def test_unknown_transition_is_not_counted_as_zero(monkeypatch):
         rooms=rooms,
         participants={1: [{"group_id": 11, "group_name": "G1", "subgroup_number": 0}],
                       2: [{"group_id": 11, "group_name": "G1", "subgroup_number": 0}]},
-        teachers={}, subjects={}, week_type="even",
+        teachers={}, subjects={}, requirements={}, week_type="even",
     )
     assert report["summary"]["transition_metrics_complete"] is False
     assert report["summary"]["time_saved"] is None
