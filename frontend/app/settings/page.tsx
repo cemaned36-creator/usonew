@@ -23,20 +23,35 @@ type SidebarItemProps = {
   active?: boolean;
 };
 
+
 function SidebarItem({
   icon: Icon,
   label,
   href,
-  active = false,
 }: SidebarItemProps) {
+  const pathname = usePathname();
+  const { preferences } = useAppearance();
+
+  const active =
+    href === "/"
+      ? pathname === "/"
+      : pathname === href || pathname.startsWith(`${href}/`);
+
+  const isStrict = preferences.palette === "strict";
+
+  const activeStyles = isStrict
+    ? "bg-[#009241]/10 text-[#009241]"
+    : "bg-[#FF6F61]/10 text-[#FF6F61]";
+
+  const inactiveStyles =
+    "text-slate-600 hover:bg-slate-50 hover:text-slate-900";
+
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
       className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
-        active
-          ? "bg-slate-100 text-slate-900"
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+        active ? activeStyles : inactiveStyles
       }`}
     >
       <Icon size={19} />
@@ -44,6 +59,7 @@ function SidebarItem({
     </Link>
   );
 }
+
 
 export default function SettingsPage() {
   const { preferences, update } = useAppearance();
