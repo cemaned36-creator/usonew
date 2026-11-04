@@ -5,6 +5,7 @@ on:
     paths:
       - "backend/app/services/optimization.py"
       - "backend/app/services/optimization_report.py"
+      - "backend/app/services/group_schedule_quality.py"
       - "backend/app/services/optimization_history.py"
       - "backend/tests/test_optimization_report.py"
       - "frontend/app/optimization/page.tsx"
