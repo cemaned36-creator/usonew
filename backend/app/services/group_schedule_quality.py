@@ -23,11 +23,28 @@ def _days(entries, participants):
     return schedule
 
 
+def _teaching_minutes(entries):
+    """Union of lesson intervals: parallel subgroups cannot inflate study time."""
+    intervals = sorted((_minute(e.start_time), _minute(e.end_time)) for e in entries)
+    if not intervals:
+        return 0
+    merged_start, merged_end = intervals[0]
+    total = 0
+    for start, end in intervals[1:]:
+        if start > merged_end:
+            total += merged_end - merged_start
+            merged_start, merged_end = start, end
+        else:
+            merged_end = max(merged_end, end)
+    return total + merged_end - merged_start
+
+
 def _day_stats(entries):
     if not entries:
         return {
             "lessons": 0, "occupied_pairs": 0, "windows": 0,
-            "span_minutes": 0, "first_pair": None, "last_pair": None,
+            "span_minutes": 0, "teaching_minutes": 0,
+            "first_pair": None, "last_pair": None,
             "unknown_pair_entries": 0,
         }
     unique = {item.id: item for item in entries}
@@ -49,6 +66,7 @@ def _day_stats(entries):
         "occupied_pairs": len(pair_numbers),
         "windows": windows if not unknown else None,
         "span_minutes": max(_minute(e.end_time) for e in lessons) - min(_minute(e.start_time) for e in lessons),
+        "teaching_minutes": _teaching_minutes(lessons),
         "first_pair": first,
         "last_pair": last,
         "unknown_pair_entries": unknown,
@@ -61,12 +79,21 @@ def _week_stats(day_map):
         for weekday in range(7)
     ]
     known = all(day["unknown_pair_entries"] == 0 for day in days)
+    taught_days = [day for day in days if day["lessons"]]
     return {
         "days_with_lessons": sum(day["lessons"] > 0 for day in days),
         "lesson_entries": sum(day["lessons"] for day in days),
         "occupied_pairs": sum(day["occupied_pairs"] for day in days),
         "windows": sum(day["windows"] for day in days) if known else None,
+        # Keep span_minutes as the legacy *weekly* sum for compatibility.
         "span_minutes": sum(day["span_minutes"] for day in days),
+        "weekly_span_minutes": sum(day["span_minutes"] for day in days),
+        "average_day_span_minutes": (
+            (sum(day["span_minutes"] for day in taught_days) + len(taught_days) // 2)
+            // len(taught_days) if taught_days else 0
+        ),
+        "longest_day_span_minutes": max((day["span_minutes"] for day in taught_days), default=0),
+        "teaching_minutes": sum(day["teaching_minutes"] for day in days),
         "latest_pair": max((day["last_pair"] or 0 for day in days), default=0) or None,
         "unknown_pair_entries": sum(day["unknown_pair_entries"] for day in days),
         "days": days,
