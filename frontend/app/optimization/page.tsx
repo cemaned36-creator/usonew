@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import OptimizationHistory from "@/components/OptimizationHistory";
+import OptimizationReport from "@/components/OptimizationReport";
+import type { OptimizationDetailedReport } from "@/components/OptimizationReport";
 import BrandLogo from "@/components/BrandLogo";
 import {
   AlertCircle,
@@ -94,6 +96,7 @@ type OptimizationResult = {
   week_type: "odd" | "even";
   teacher_id: number | null;
   eligible_entries_count: number;
+  detailed_report?: OptimizationDetailedReport;
 };
 
 type Message = { kind: "success" | "error" | "info"; text: string };
@@ -637,6 +640,8 @@ export default function OptimizationPage() {
                         </div>
                       )}
                     </section>
+
+                    {result.detailed_report && <OptimizationReport key={`${result.week_type}:${result.teacher_id ?? "all"}`} report={result.detailed_report} />}
 
                     <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
