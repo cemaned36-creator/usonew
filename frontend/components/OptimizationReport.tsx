@@ -59,6 +59,7 @@ type GroupDayQuality = {
   occupied_pairs: number;
   windows: number | null;
   span_minutes: number;
+  teaching_minutes?: number;
   first_pair: number | null;
   last_pair: number | null;
   unknown_pair_entries: number;
@@ -70,6 +71,10 @@ type GroupWeekQuality = {
   occupied_pairs: number;
   windows: number | null;
   span_minutes: number;
+  weekly_span_minutes?: number;
+  average_day_span_minutes?: number;
+  longest_day_span_minutes?: number;
+  teaching_minutes?: number;
   latest_pair: number | null;
   unknown_pair_entries: number;
   days: GroupDayQuality[];
@@ -262,6 +267,8 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
             Окно — свободная пара между занятиями. Длительность учебного дня —
             от начала первой до конца последней пары, включая перемены.
             Параллельные подгруппы считаются одним занятым временным слотом.
+            «Учебная неделя» — сумма длительностей дней, а не продолжительность одного дня.
+            Чистое время занятий не включает перемены и окна.
           </p>
           {!report.groups.length && <p className="text-sm text-slate-500">Изменений в расписаниях групп нет.</p>}
           {report.groups.map(group => (
@@ -288,8 +295,14 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <SummaryMetric label="Окон до" value={group.before.windows == null ? "—" : String(group.before.windows)} />
                     <SummaryMetric label="Окон после" value={group.after.windows == null ? "—" : String(group.after.windows)} />
-                    <SummaryMetric label="Учебный день, сумма до" value={duration(group.before.span_minutes)} />
-                    <SummaryMetric label="Учебный день, сумма после" value={duration(group.after.span_minutes)} />
+                    <SummaryMetric label="Неделя до (с переменами)" value={duration(group.before.weekly_span_minutes ?? group.before.span_minutes)} />
+                    <SummaryMetric label="Неделя после (с переменами)" value={duration(group.after.weekly_span_minutes ?? group.after.span_minutes)} />
+                    <SummaryMetric label="Средний учебный день до" value={group.before.average_day_span_minutes == null ? "—" : duration(group.before.average_day_span_minutes)} />
+                    <SummaryMetric label="Средний учебный день после" value={group.after.average_day_span_minutes == null ? "—" : duration(group.after.average_day_span_minutes)} />
+                    <SummaryMetric label="Самый длинный день до" value={group.before.longest_day_span_minutes == null ? "—" : duration(group.before.longest_day_span_minutes)} />
+                    <SummaryMetric label="Самый длинный день после" value={group.after.longest_day_span_minutes == null ? "—" : duration(group.after.longest_day_span_minutes)} />
+                    <SummaryMetric label="Чистое время занятий до" value={group.before.teaching_minutes == null ? "—" : duration(group.before.teaching_minutes)} />
+                    <SummaryMetric label="Чистое время занятий после" value={group.after.teaching_minutes == null ? "—" : duration(group.after.teaching_minutes)} />
                   </div>
                   {group.timetable && (
                     <details className="rounded-xl border border-slate-200 p-3">
@@ -312,7 +325,8 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                           <div key={day.weekday} className="rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
                             <p className="font-semibold">{DAYS[day.weekday]}</p>
                             <p className="mt-1">Окна: {day.windows ?? "—"} → {next.windows ?? "—"}</p>
-                            <p>Продолжительность: {duration(day.span_minutes)} → {duration(next.span_minutes)}</p>
+                            <p>Длительность дня (с переменами): {duration(day.span_minutes)} → {duration(next.span_minutes)}</p>
+                            <p>Чистое время занятий: {day.teaching_minutes == null ? "—" : duration(day.teaching_minutes)} → {next.teaching_minutes == null ? "—" : duration(next.teaching_minutes)}</p>
                             <p>Первая / последняя пара: {day.first_pair ?? "—"} / {day.last_pair ?? "—"} → {next.first_pair ?? "—"} / {next.last_pair ?? "—"}</p>
                           </div>
                         );
