@@ -311,3 +311,50 @@ def test_student_impact_warns_on_window_increase(monkeypatch):
     assert len(report["student_warnings"]) == 1
     assert report["student_warnings"][0]["window_delta"] == 1
     assert report["student_warnings"][0]["span_delta_minutes"] == 105
+
+
+def test_group_week_duration_average_max_and_actual_teaching_time():
+    from app.services.group_schedule_quality import build_group_quality
+    participants = {
+        1: [{"group_id": 11, "group_name": "G11", "subgroup_number": 1}],
+        2: [{"group_id": 11, "group_name": "G11", "subgroup_number": 2}],
+        3: [{"group_id": 11, "group_name": "G11", "subgroup_number": 0}],
+    }
+    monday = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 2, "08:30", "10:05"),
+    ]
+    tuesday = item(3, 3, 1, "10:15", "11:50")
+    tuesday.weekday = 1
+    entries = monday + [tuesday]
+    group = build_group_quality(entries, entries, participants, {11: {1}})[0]
+    week = group["before"]
+    assert week["days_with_lessons"] == 2
+    assert week["weekly_span_minutes"] == 190
+    assert week["span_minutes"] == 190  # legacy contract
+    assert week["average_day_span_minutes"] == 95
+    assert week["longest_day_span_minutes"] == 95
+    assert week["teaching_minutes"] == 190
+    assert week["days"][0]["teaching_minutes"] == 95
+
+
+def test_group_teaching_time_excludes_windows_and_short_breaks():
+    from app.services.group_schedule_quality import _day_stats
+    entries = [
+        item(1, 1, 1, "08:30", "10:05"),
+        item(2, 2, 1, "12:00", "13:35"),
+    ]
+    stats = _day_stats(entries)
+    assert stats["span_minutes"] == 305
+    assert stats["teaching_minutes"] == 190
+    assert stats["windows"] == 1
+
+
+def test_group_week_empty_schedule_has_zero_durations():
+    from app.services.group_schedule_quality import _week_stats
+    week = _week_stats({})
+    assert week["days_with_lessons"] == 0
+    assert week["weekly_span_minutes"] == 0
+    assert week["average_day_span_minutes"] == 0
+    assert week["longest_day_span_minutes"] == 0
+    assert week["teaching_minutes"] == 0
