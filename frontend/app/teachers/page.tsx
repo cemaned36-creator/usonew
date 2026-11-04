@@ -106,9 +106,18 @@ export default function TeachersPage() {
             </div>
           </nav>
           <div className="border-t border-slate-200 p-4">
-            <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-sm font-medium text-slate-800">Расписание УрГУПС</div>
-              <div className="mt-1 text-xs text-slate-400">Управление расписанием</div>
+            <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold">
+                АИ
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">
+                  Администратор
+                </div>
+                <div className="truncate text-xs text-slate-400">
+                  admin@usurt.ru
+                </div>
+              </div>
             </div>
           </div>
         </aside>
@@ -116,7 +125,7 @@ export default function TeachersPage() {
         <main className="min-w-0 flex-1">
           <header className="relative flex min-h-[88px] items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
             <div className="flex-1" />
-            <div className="absolute left-1/2 max-w-[58%] -translate-x-1/2 text-center"><h1 className="text-lg font-semibold tracking-tight sm:text-xl">Преподаватели</h1><p className="mt-1 hidden text-sm text-slate-400 sm:block">Список преподавателей, дисциплин и учебных групп</p></div>
+            <div className="absolute left-1/2 max-w-[58%] -translate-x-1/2 text-center"><h1 className="text-lg font-semibold tracking-tight sm:text-xl">Преподаватели</h1><p className="mt-1 hidden text-sm text-slate-400 sm:block">Список преподавателей, их дисциплин и учебных групп</p></div>
             <div className="flex flex-1 justify-end"><Link href="/" className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:flex"><ArrowLeft className="h-4 w-4" /> На главную</Link></div>
           </header>
 
