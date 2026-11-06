@@ -116,8 +116,8 @@ def _has_schedule_conflict(
 
     return False
 
-def _transition_minutes(db, previous, current, lessons, rooms):
-    """Время перехода с учётом доступного перерыва."""
+def _required_transition_minutes(db, previous, current, lessons, rooms):
+    """Known walking + key time, independent of whether the break is sufficient."""
     previous_lesson = lessons.get(previous.lesson_id)
     current_lesson = lessons.get(current.lesson_id)
 
@@ -147,6 +147,12 @@ def _transition_minutes(db, previous, current, lessons, rooms):
         )
         required = None if result is None else result["total_time"]
 
+    return required
+
+
+def _transition_minutes(db, previous, current, lessons, rooms):
+    """Feasible transition only. Keep this strict for search and validation."""
+    required = _required_transition_minutes(db, previous, current, lessons, rooms)
     available = _minutes(current.start_time) - _minutes(previous.end_time)
 
     if required is None or available < 0 or required > available:
@@ -154,11 +160,11 @@ def _transition_minutes(db, previous, current, lessons, rooms):
 
     return required
 
-def _teacher_transition_total(entries, lessons, rooms, db):
+def _teacher_transition_total(entries, lessons, rooms, db, *, require_feasible=True):
     """Суммирует время переходов между занятиями преподавателей.
 
-    Возвращает None, если хотя бы один необходимый переход
-    невозможно рассчитать.
+    По умолчанию требует допустимости всех переходов. Для аналитики
+    require_feasible=False сохраняет известное время при коротком перерыве.
     """
 
     by_teacher_day = {}
@@ -181,9 +187,8 @@ def _teacher_transition_total(entries, lessons, rooms, db):
         for previous, current in zip(
             teacher_entries, teacher_entries[1:]
         ):
-            value = _transition_minutes(
-                db, previous, current, lessons, rooms
-            )
+            calculate = _transition_minutes if require_feasible else _required_transition_minutes
+            value = calculate(db, previous, current, lessons, rooms)
 
             if value is None:
                 return None
@@ -580,7 +585,7 @@ def _preview_optimization(
 
     # 1. Рассчитываем время переходов до оптимизации.
     before_total = _teacher_transition_total(
-        original_entries, lessons, rooms, db
+        original_entries, lessons, rooms, db, require_feasible=False
     )
 
     teachers = load_teacher_conditions(db)
@@ -624,16 +629,16 @@ def _preview_optimization(
         for previous, current in zip(
             teacher_entries, teacher_entries[1:]
         ):
-            if _transition_minutes(
-                db, previous, current, lessons, rooms
-            ) is None:
+            required = _required_transition_minutes(db, previous, current, lessons, rooms)
+            available = _minutes(current.start_time) - _minutes(previous.end_time)
+            if required is None or available < 0 or required > available:
                 unknown_routes.append({
                     "previous_entry_id": previous.id,
                     "current_entry_id": current.id,
-                    "reason": (
-                        "Маршрут отсутствует или времени "
-                        "на переход недостаточно"
-                    ),
+                    "required_minutes": required,
+                    "available_minutes": available,
+                    "reason": ("Маршрут или время доступа не определены" if required is None else
+                               f"На переход нужно {required} мин, доступно {available} мин"),
                 })
 
     # 4. Формируем список изменений аудиторий.
@@ -664,7 +669,7 @@ def _preview_optimization(
 
     # 5. Рассчитываем время переходов после оптимизации.
     after_total = _teacher_transition_total(
-        entries, lessons, rooms, db
+        entries, lessons, rooms, db, require_feasible=False
     )
 
     time_saved = (
@@ -705,6 +710,11 @@ def _preview_optimization(
         week_type=week_type,
         selected_teacher_id=teacher_id,
     )
+
+    insufficient_before = detailed_report["summary"]["insufficient_breaks_before"]
+    if insufficient_before:
+        warnings.append(f"До оптимизации: {insufficient_before} переходов не укладываются в перерыв. "
+                        "Их известное время включено в сумму; это не означает допустимость расписания.")
 
     return {
         "constraint_issues": issues,
