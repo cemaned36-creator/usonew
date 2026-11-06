@@ -16,7 +16,7 @@ def item(id, lesson_id, room_id, start, end):
 def test_report_counts_shared_lesson_once_and_uses_all_impacted_groups(monkeypatch):
     monkeypatch.setattr(optimization_report, "room_in_active_scope", lambda room: True)
     monkeypatch.setattr(
-        optimization_report, "_transition_minutes",
+        optimization_report, "_required_transition_minutes",
         lambda db, left, right, lessons, rooms:
             3 if left.room_id == right.room_id else 8,
     )
@@ -54,7 +54,7 @@ def test_report_counts_shared_lesson_once_and_uses_all_impacted_groups(monkeypat
 
 def test_unknown_transition_is_not_counted_as_zero(monkeypatch):
     monkeypatch.setattr(optimization_report, "room_in_active_scope", lambda room: True)
-    monkeypatch.setattr(optimization_report, "_transition_minutes",
+    monkeypatch.setattr(optimization_report, "_required_transition_minutes",
                         lambda *args: None)
     lessons = {1: SimpleNamespace(teacher_id=10, subject_id=1),
                2: SimpleNamespace(teacher_id=10, subject_id=1)}
@@ -141,7 +141,7 @@ def test_no_invented_improvement_when_transition_is_unknown():
 
 def test_adjacent_effect_counts_only_touches_and_is_not_global(monkeypatch):
     monkeypatch.setattr(optimization_report, "room_in_active_scope", lambda room: True)
-    monkeypatch.setattr(optimization_report, "_transition_minutes", lambda *args: 4)
+    monkeypatch.setattr(optimization_report, "_required_transition_minutes", lambda *args: 4)
     lessons = {
         x: SimpleNamespace(teacher_id=10, subject_id=1) for x in range(1, 5)
     }
@@ -284,7 +284,7 @@ def test_group_timetable_includes_unchanged_lessons_and_highlights_changed():
 
 def test_student_impact_warns_on_window_increase(monkeypatch):
     monkeypatch.setattr(optimization_report, "room_in_active_scope", lambda room: True)
-    monkeypatch.setattr(optimization_report, "_transition_minutes", lambda *args: 0)
+    monkeypatch.setattr(optimization_report, "_required_transition_minutes", lambda *args: 0)
     lessons = {
         1: SimpleNamespace(teacher_id=10, subject_id=1),
         2: SimpleNamespace(teacher_id=20, subject_id=1),

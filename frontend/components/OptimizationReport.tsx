@@ -7,6 +7,9 @@ type TransitionMetrics = {
   minutes: number | null;
   unknown_transitions: number;
   transition_count: number;
+  known_minutes?: number;
+  insufficient_breaks?: number;
+  issues?: { previous_entry_id: number; current_entry_id: number; required_minutes: number | null; available_minutes: number; kind: string }[];
 };
 
 type ReportChange = {
@@ -92,6 +95,8 @@ export type OptimizationDetailedReport = {
     transition_time_after: number | null;
     time_saved: number | null;
     transition_metrics_complete: boolean;
+    insufficient_breaks_before?: number;
+    insufficient_breaks_after?: number;
   };
   teachers: {
     teacher_id: number;
@@ -157,7 +162,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
     ),
     [report.changes, teacherFilter, groupFilter, typeFilter, dayFilter],
   );
-  const changedTeachers = report.teachers.filter(item => item.changes_count > 0);
+  const changedTeachers = report.teachers.filter(item => item.changes_count > 0 || item.before.unknown_transitions > 0 || item.after.unknown_transitions > 0 || (item.before.insufficient_breaks ?? 0) > 0 || (item.after.insufficient_breaks ?? 0) > 0);
   const allTeacherOptions = report.teachers.filter(item => item.changes_count > 0);
 
   return (
@@ -200,9 +205,11 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
           </div>
           {!report.summary.transition_metrics_complete && (
             <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-              Для части переходов отсутствует корректный маршрут или не хватает времени.
-              Итоговые минуты и экономия не рассчитываются, чтобы не показывать ошибочные значения.
+              В одной из версий расписания есть переходы с неизвестным временем. Полная сумма для этой версии и экономия не рассчитаны. Доступный показатель другой версии сохранён.
             </p>
+          )}
+          {((report.summary.insufficient_breaks_before ?? 0) > 0 || (report.summary.insufficient_breaks_after ?? 0) > 0) && (
+            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Переходов с недостаточным перерывом: до — {report.summary.insufficient_breaks_before ?? 0}, после — {report.summary.insufficient_breaks_after ?? 0}. Их известное время включено в суммы; допустимость расписания проверяется отдельно.</p>
           )}
           {report.student_impact && (
             <div className="space-y-3 rounded-xl border border-slate-200 p-4">
@@ -238,7 +245,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
 
       {tab === "teachers" && (
         <div className="space-y-3">
-          {!changedTeachers.length && <p className="text-sm text-slate-500">Изменённых занятий преподавателей нет.</p>}
+          {!changedTeachers.length && <p className="text-sm text-slate-500">Изменений и проблем с переходами преподавателей нет.</p>}
           {changedTeachers.map(teacher => (
             <div key={teacher.teacher_id} className="rounded-xl border border-slate-200 p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -253,6 +260,8 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                 <SummaryMetric label="После" value={metric(teacher.after.minutes)} />
                 <SummaryMetric label="Экономия / рост" value={savings(teacher.time_saved)} />
               </div>
+              <TransitionProblems stats={teacher.before} label="До" />
+              <TransitionProblems stats={teacher.after} label="После" />
               {(teacher.before.unknown_transitions > 0 || teacher.after.unknown_transitions > 0) && (
                 <p className="mt-2 text-xs text-amber-700">Есть переходы без подтверждённого времени; показатели могут быть неполными.</p>
               )}
@@ -400,6 +409,8 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                   {change.adjacent_transitions && (
                     <div className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-600">
                       <p>Переходы непосредственно до и после занятия: {metric(change.adjacent_transitions.before.minutes)} → {metric(change.adjacent_transitions.after.minutes)}.</p>
+                      <TransitionProblems stats={change.adjacent_transitions.before} label="До" />
+                      <TransitionProblems stats={change.adjacent_transitions.after} label="После" />
                       <p className="mt-1 text-slate-500">Эти локальные показатели могут пересекаться с показателями соседних занятий и не суммируются.</p>
                     </div>
                   )}
@@ -488,4 +499,13 @@ function GroupTimetableColumn({ title, days, optimized }: {
       </div>
     </div>
   );
+}
+
+function TransitionProblems({ stats, label }: { stats: TransitionMetrics; label: string }) {
+  if (!(stats.insufficient_breaks || stats.unknown_transitions)) return null;
+  return <div className="mt-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+    <p>{label}: неизвестных переходов — {stats.unknown_transitions}; недостаточных перерывов — {stats.insufficient_breaks ?? 0}.</p>
+    {stats.unknown_transitions > 0 && stats.known_minutes != null && <p className="mt-1">Известная часть: {stats.known_minutes} мин (не полная сумма).</p>}
+    {stats.issues?.map(issue => <p key={`${issue.previous_entry_id}-${issue.current_entry_id}`} className="mt-1">Записи #{issue.previous_entry_id} → #{issue.current_entry_id}: {issue.required_minutes == null ? "маршрут или время доступа неизвестны" : `нужно ${issue.required_minutes} мин, доступно ${issue.available_minutes} мин`}.</p>)}
+  </div>;
 }

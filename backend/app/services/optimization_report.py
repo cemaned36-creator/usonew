@@ -6,7 +6,7 @@ several student groups attend the same lesson.
 """
 from collections import defaultdict
 
-from app.services.optimization import _transition_minutes, _is_sports_entry
+from app.services.optimization import _required_transition_minutes, _is_sports_entry, _minutes
 from app.services.room_scope import room_in_active_scope
 from app.services.teacher_conditions import room_allowed, time_allowed
 from app.services.group_schedule_quality import build_group_quality
@@ -14,6 +14,26 @@ from app.services.group_schedule_quality import build_group_quality
 
 def _time(value):
     return value.strftime("%H:%M")
+
+
+def _link_stats(db, links, lessons, rooms):
+    known = unknown = insufficient = 0
+    problems = []
+    for previous, current in links:
+        required = _required_transition_minutes(db, previous, current, lessons, rooms)
+        available = _minutes(current.start_time) - _minutes(previous.end_time)
+        if required is None:
+            unknown += 1
+        else:
+            known += required
+            insufficient += int(available < 0 or required > available)
+        if required is None or available < 0 or required > available:
+            problems.append({"previous_entry_id": previous.id, "current_entry_id": current.id,
+                             "required_minutes": required, "available_minutes": available,
+                             "kind": "unknown_route" if required is None else "insufficient_break"})
+    return {"minutes": None if unknown else known, "known_minutes": known,
+            "unknown_transitions": unknown, "insufficient_breaks": insufficient,
+            "transition_count": len(links), "issues": problems}
 
 
 def _transition_stats(entries, lessons, rooms, db):
@@ -26,18 +46,7 @@ def _transition_stats(entries, lessons, rooms, db):
     result = {}
     for (teacher_id, weekday), day in days.items():
         day.sort(key=lambda e: (e.start_time, e.id))
-        minutes, missing = 0, 0
-        for previous, current in zip(day, day[1:]):
-            value = _transition_minutes(db, previous, current, lessons, rooms)
-            if value is None:
-                missing += 1
-            else:
-                minutes += value
-        result[(teacher_id, weekday)] = {
-            "minutes": None if missing else minutes,
-            "unknown_transitions": missing,
-            "transition_count": max(0, len(day) - 1),
-        }
+        result[(teacher_id, weekday)] = _link_stats(db, list(zip(day, day[1:])), lessons, rooms)
     return result
 
 
@@ -47,6 +56,9 @@ def _aggregate(stats, teacher_id):
     return {
         "minutes": None if unknown else sum(row["minutes"] for row in rows),
         "unknown_transitions": unknown,
+        "known_minutes": sum(row["known_minutes"] for row in rows),
+        "insufficient_breaks": sum(row["insufficient_breaks"] for row in rows),
+        "issues": [issue for row in rows for issue in row["issues"]],
         "transition_count": sum(row["transition_count"] for row in rows),
     }
 
@@ -79,12 +91,7 @@ def _adjacent_transition_effect(db, entries, entry_id, lessons, rooms):
         links.append((day[index - 1], day[index]))
     if index + 1 < len(day):
         links.append((day[index], day[index + 1]))
-    values = [_transition_minutes(db, left, right, lessons, rooms) for left, right in links]
-    return {
-        "minutes": sum(values) if all(value is not None for value in values) else None,
-        "unknown_transitions": sum(value is None for value in values),
-        "transition_count": len(links),
-    }
+    return _link_stats(db, links, lessons, rooms)
 
 
 def _change_explanation(old, new, teacher, old_room, new_room, before_touch, after_touch):
@@ -104,6 +111,9 @@ def _change_explanation(old, new, teacher, old_room, new_room, before_touch, aft
             "verified": True,
             "text": f"Исправлено превышение разрешённого этажа {floor}.",
         })
+    if before_touch.get("insufficient_breaks", 0) > after_touch.get("insufficient_breaks", 0):
+        reasons.append({"code": "insufficient_break_fixed", "verified": True,
+                        "text": "Уменьшилось число соседних переходов, не укладывающихся в перерыв."})
     before_min = before_touch["minutes"]
     after_min = after_touch["minutes"]
     if before_min is not None and after_min is not None and before_min != after_min:
@@ -138,6 +148,7 @@ def build_optimization_report(
         entry_id for entry_id, entry in original.items()
         if room_in_active_scope(rooms.get(entry.room_id))
         and not _is_sports_entry(entry, rooms, requirements)
+        and (selected_teacher_id is None or lessons[entry.lesson_id].teacher_id == selected_teacher_id)
     }
     before = [original[entry_id] for entry_id in sorted(eligible)]
     after = [proposed[entry_id] for entry_id in sorted(eligible)]
@@ -218,7 +229,7 @@ def build_optimization_report(
         teacher_report.append({
             "teacher_id": teacher_id,
             "teacher_name": getattr(teachers.get(teacher_id), "name", None),
-            "changes_count": len(teacher_change_ids[teacher_id]),
+            "changes_count": len(teacher_change_ids.get(teacher_id, ())),
             "before": b,
             "after": a,
             "delta_minutes": _delta(b["minutes"], a["minutes"]),
@@ -260,10 +271,9 @@ def build_optimization_report(
                        if row["before"]["minutes"] is not None)
     total_after = sum(row["after"]["minutes"] for row in teacher_report
                       if row["after"]["minutes"] is not None)
-    complete = all(
-        row["before"]["minutes"] is not None and row["after"]["minutes"] is not None
-        for row in teacher_report
-    )
+    complete_before = all(row["before"]["minutes"] is not None for row in teacher_report)
+    complete_after = all(row["after"]["minutes"] is not None for row in teacher_report)
+    complete = complete_before and complete_after
 
     return {
         "version": 1,
@@ -276,10 +286,14 @@ def build_optimization_report(
             "time_changes": changed_times,
             "affected_teachers": len(teacher_change_ids),
             "affected_groups": len(group_change_ids),
-            "transition_time_before": total_before if complete else None,
-            "transition_time_after": total_after if complete else None,
+            "transition_time_before": total_before if complete_before else None,
+            "transition_time_after": total_after if complete_after else None,
             "time_saved": total_before - total_after if complete else None,
             "transition_metrics_complete": complete,
+            "insufficient_breaks_before": sum(row["before"]["insufficient_breaks"] for row in teacher_report),
+            "insufficient_breaks_after": sum(row["after"]["insufficient_breaks"] for row in teacher_report),
+            "unknown_transitions_before": sum(row["before"]["unknown_transitions"] for row in teacher_report),
+            "unknown_transitions_after": sum(row["after"]["unknown_transitions"] for row in teacher_report),
         },
         "teachers": teacher_report,
         "groups": groups_report,
