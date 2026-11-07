@@ -21,7 +21,7 @@ def test_report_counts_shared_lesson_once_and_uses_all_impacted_groups(monkeypat
             3 if left.room_id == right.room_id else 8,
     )
     lessons = {
-        1: SimpleNamespace(teacher_id=10, subject_id=1),
+        1: SimpleNamespace(teacher_id=10, subject_id=1, lesson_type="Лекция"),
         2: SimpleNamespace(teacher_id=10, subject_id=1),
     }
     rooms = {
@@ -44,6 +44,9 @@ def test_report_counts_shared_lesson_once_and_uses_all_impacted_groups(monkeypat
         subjects={1: SimpleNamespace(name="Subject")},
         week_type="odd", selected_teacher_id=10,
     )
+    assert report["changes"][0]["lesson_type"] == "Лекция"
+    assert report["groups"][0]["timetable"]["before"][0]["lessons"][0]["lesson_type"] == "Лекция"
+    assert report["groups"][0]["timetable"]["after"][0]["lessons"][0]["lesson_type"] == "Лекция"
     assert report["summary"]["changed_entries"] == 1
     assert report["summary"]["room_changes"] == 1
     assert report["summary"]["affected_groups"] == 2

@@ -1,5 +1,6 @@
 "use client";
 
+import LessonTypeBadge from "@/components/LessonTypeBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import OptimizationHistory from "@/components/OptimizationHistory";
@@ -50,6 +51,7 @@ type ScheduleEntry = {
   group_id?: number | null;
   groups?: LessonParticipant[];
   students_count?: number;
+  lesson_type?: string | null;
 };
 
 type NamedOption = { id: number; name: string };
@@ -329,6 +331,7 @@ export default function OptimizationPage() {
         teacherId != null
           ? teacherById.get(teacherId) ?? `Преподаватель #${teacherId}`
           : "Преподаватель не найден",
+      lessonType: entry.lesson_type ?? lesson?.lesson_type,
       group: formatParticipants(entry.groups ?? lesson?.groups),
     };
   }
@@ -389,6 +392,7 @@ export default function OptimizationPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="break-words text-sm font-medium text-slate-800">{details.subject}</div>
+                            <div className="mt-1"><LessonTypeBadge type={details.lessonType} /></div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                               <span className="inline-flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" />{details.teacher}</span>
                               <span className="text-slate-300">•</span>

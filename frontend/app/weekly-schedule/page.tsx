@@ -1,6 +1,7 @@
 
 "use client";
 
+import LessonTypeBadge from "@/components/LessonTypeBadge";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import BrandLogo from "@/components/BrandLogo";
@@ -910,6 +911,7 @@ export default function WeeklySchedulePage() {
                                       {lessonLabel(entry.lesson_id, entry)}
                                     </p>
                                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                      <LessonTypeBadge type={entry.lesson_type ?? lessons.find(lesson => lesson.id === entry.lesson_id)?.lesson_type} />
                                       <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1">
                                         <DoorOpen className="h-3.5 w-3.5 text-slate-400" />
                                         {roomName}
