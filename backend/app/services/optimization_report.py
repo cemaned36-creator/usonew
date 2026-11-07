@@ -183,6 +183,7 @@ def build_optimization_report(
         changes.append({
             "entry_id": entry_id,
             "lesson_id": old.lesson_id,
+            "lesson_type": getattr(lesson, "lesson_type", None),
             "subject_name": getattr(subjects.get(lesson.subject_id), "name", None),
             "teacher_id": lesson.teacher_id,
             "teacher_name": getattr(teachers.get(lesson.teacher_id), "name", None),

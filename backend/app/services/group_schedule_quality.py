@@ -113,6 +113,7 @@ def _schedule_days(day_map, lessons, rooms, teachers, subjects, changed_ids):
             rows.append({
                 "entry_id": entry.id,
                 "lesson_id": entry.lesson_id,
+                "lesson_type": getattr(lesson, "lesson_type", None),
                 "start_time": entry.start_time.strftime("%H:%M"),
                 "end_time": entry.end_time.strftime("%H:%M"),
                 "pair_number": get_lesson_pair(entry.start_time, entry.end_time),

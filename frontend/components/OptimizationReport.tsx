@@ -1,5 +1,6 @@
 "use client";
 
+import LessonTypeBadge from "@/components/LessonTypeBadge";
 import { useId, useMemo, useState } from "react";
 import { ArrowRight, Clock3, DoorOpen, GraduationCap, Users } from "lucide-react";
 
@@ -16,6 +17,7 @@ type ReportChange = {
   entry_id: number;
   lesson_id: number;
   subject_name: string | null;
+  lesson_type?: string | null;
   teacher_id: number;
   teacher_name: string | null;
   groups: { id: number; name: string; subgroup_number: number }[];
@@ -43,6 +45,7 @@ type GroupScheduleLesson = {
   room_name: string | null;
   teacher_name: string | null;
   subject_name: string | null;
+  lesson_type?: string | null;
   changed: boolean;
 };
 
@@ -402,6 +405,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="font-semibold text-slate-900">{change.subject_name ?? `Занятие #${change.lesson_id}`}</h3>
+                  <div className="mt-1"><LessonTypeBadge type={change.lesson_type} /></div>
                   <p className="mt-1 text-xs text-slate-500">
                     {DAYS[change.weekday] ?? `День ${change.weekday}`} · {change.teacher_name ?? `Преподаватель #${change.teacher_id}`}
                   </p>
@@ -504,6 +508,7 @@ function GroupTimetableColumn({ title, days, optimized }: {
                     </div>
                     <div className="min-w-0 space-y-1">
                       <p className="break-words text-sm font-semibold">{lesson.subject_name ?? `Занятие #${lesson.lesson_id}`}</p>
+                      <LessonTypeBadge type={lesson.lesson_type} />
                       <p className="break-words text-xs text-slate-500">{lesson.teacher_name ?? "Преподаватель не указан"}</p>
                       <p className="text-xs font-medium text-slate-700">Аудитория: {lesson.room_name ?? "—"}</p>
                       {lesson.changed && <p className="text-xs font-semibold text-emerald-800">Изменено</p>}
