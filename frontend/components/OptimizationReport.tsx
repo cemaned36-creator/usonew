@@ -151,12 +151,14 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
   const [tab, setTab] = useState<Tab>("summary");
   const [teacherFilter, setTeacherFilter] = useState("");
   const teacherOptionsId = useId();
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [showTeacherSuggestions, setShowTeacherSuggestions] = useState(false);
   const [groupFilter, setGroupFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
   const selectedChanges = useMemo(
     () => report.changes.filter(change =>
-      (!teacherFilter.trim() || (change.teacher_name ?? `Преподаватель #${change.teacher_id}`).toLocaleLowerCase("ru").includes(teacherFilter.trim().toLocaleLowerCase("ru"))) &&
+      (!teacherFilter || String(change.teacher_id) === teacherFilter) &&
       (!groupFilter || change.groups.some(group => String(group.id) === groupFilter)) &&
       (typeFilter === "all" || change.change_types.includes(typeFilter as "room" | "time")) &&
       (dayFilter === "all" || String(change.weekday) === dayFilter)
@@ -165,6 +167,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
   );
   const changedTeachers = report.teachers.filter(item => item.changes_count > 0 || item.before.unknown_transitions > 0 || item.after.unknown_transitions > 0 || (item.before.insufficient_breaks ?? 0) > 0 || (item.after.insufficient_breaks ?? 0) > 0);
   const allTeacherOptions = report.teachers.filter(item => item.changes_count > 0);
+  const filteredTeachers = allTeacherOptions.filter(item => (item.teacher_name ?? `Преподаватель #${item.teacher_id}`).toLocaleLowerCase("ru").includes(teacherSearch.trim().toLocaleLowerCase("ru")));
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
@@ -346,15 +349,34 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
       {tab === "changes" && (
         <div className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="min-w-0">
-              <input type="search" aria-label="Поиск преподавателя" placeholder="Все преподаватели — поиск"
-                list={teacherOptionsId} value={teacherFilter} onChange={e => setTeacherFilter(e.target.value)}
-                autoComplete="off" className="w-full min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm text-slate-900" />
-              <datalist id={teacherOptionsId}>
-                {allTeacherOptions.filter(item => (item.teacher_name ?? `Преподаватель #${item.teacher_id}`).toLocaleLowerCase("ru").includes(teacherFilter.trim().toLocaleLowerCase("ru"))).map(item => (
-                  <option key={item.teacher_id} value={item.teacher_name ?? `Преподаватель #${item.teacher_id}`} />
-                ))}
-              </datalist>
+            <div className="relative min-w-0">
+              <label htmlFor={teacherOptionsId} className="sr-only">Поиск преподавателя</label>
+              <input id={teacherOptionsId} type="text" value={teacherSearch}
+                onChange={event => { setTeacherSearch(event.target.value); setTeacherFilter(""); setShowTeacherSuggestions(true); }}
+                onFocus={() => setShowTeacherSuggestions(true)}
+                onBlur={() => { setTimeout(() => setShowTeacherSuggestions(false), 150); }}
+                onKeyDown={event => { if (event.key === "Escape") setShowTeacherSuggestions(false); }}
+                placeholder="Поиск преподавателя..." autoComplete="off"
+                className="block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10" />
+              {showTeacherSuggestions && teacherSearch.trim() !== "" && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                  {filteredTeachers.length > 0 ? filteredTeachers.map(teacher => (
+                    <button key={teacher.teacher_id} type="button"
+                      className="block w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-100"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => {
+                        setTeacherFilter(String(teacher.teacher_id));
+                        setTeacherSearch(teacher.teacher_name ?? `Преподаватель #${teacher.teacher_id}`);
+                        setShowTeacherSuggestions(false);
+                      }}>
+                      {teacher.teacher_name ?? `Преподаватель #${teacher.teacher_id}`}
+                    </button>
+                  )) : <p className="px-4 py-3 text-sm text-slate-500">Преподаватели не найдены</p>}
+                </div>
+              )}
+              {teacherFilter && <button type="button"
+                onClick={() => { setTeacherFilter(""); setTeacherSearch(""); setShowTeacherSuggestions(false); }}
+                className="mt-2 text-xs text-blue-600 hover:text-blue-800">Показать всех преподавателей</button>}
             </div>
             <select aria-label="Фильтр по группе" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}
               className="min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
@@ -417,9 +439,9 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
               )}
             </article>
           ))}
-          {(teacherFilter || groupFilter || typeFilter !== "all" || dayFilter !== "all") && (
+          {(teacherSearch || teacherFilter || groupFilter || typeFilter !== "all" || dayFilter !== "all") && (
             <button type="button" className="text-sm font-medium text-emerald-700 underline"
-              onClick={() => { setTeacherFilter(""); setGroupFilter(""); setTypeFilter("all"); setDayFilter("all"); }}>
+              onClick={() => { setTeacherFilter(""); setTeacherSearch(""); setShowTeacherSuggestions(false); setGroupFilter(""); setTypeFilter("all"); setDayFilter("all"); }}>
               Сбросить фильтры
             </button>
           )}
