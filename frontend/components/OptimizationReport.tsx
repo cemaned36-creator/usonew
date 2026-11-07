@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { ArrowRight, Clock3, DoorOpen, GraduationCap, Users } from "lucide-react";
 
 type TransitionMetrics = {
@@ -150,12 +150,13 @@ const savings = (value: number | null) =>
 export default function OptimizationReport({ report }: { report: OptimizationDetailedReport }) {
   const [tab, setTab] = useState<Tab>("summary");
   const [teacherFilter, setTeacherFilter] = useState("");
+  const teacherOptionsId = useId();
   const [groupFilter, setGroupFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
   const selectedChanges = useMemo(
     () => report.changes.filter(change =>
-      (!teacherFilter || String(change.teacher_id) === teacherFilter) &&
+      (!teacherFilter.trim() || (change.teacher_name ?? `Преподаватель #${change.teacher_id}`).toLocaleLowerCase("ru").includes(teacherFilter.trim().toLocaleLowerCase("ru"))) &&
       (!groupFilter || change.groups.some(group => String(group.id) === groupFilter)) &&
       (typeFilter === "all" || change.change_types.includes(typeFilter as "room" | "time")) &&
       (dayFilter === "all" || String(change.weekday) === dayFilter)
@@ -209,7 +210,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
             </p>
           )}
           {((report.summary.insufficient_breaks_before ?? 0) > 0 || (report.summary.insufficient_breaks_after ?? 0) > 0) && (
-            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Переходов с недостаточным перерывом: до — {report.summary.insufficient_breaks_before ?? 0}, после — {report.summary.insufficient_breaks_after ?? 0}. Их известное время включено в суммы; допустимость расписания проверяется отдельно.</p>
+            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Переходов с недостаточным перерывом: до — {report.summary.insufficient_breaks_before ?? 0}, после — {report.summary.insufficient_breaks_after ?? 0}. В этих случаях путь занимает больше времени, чем перерыв между парами. Время пути учтено в итогах; сохранить план можно только после проверки всех ограничений.</p>
           )}
           {report.student_impact && (
             <div className="space-y-3 rounded-xl border border-slate-200 p-4">
@@ -221,6 +222,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                 <span className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800">Смешанный эффект: {report.student_impact.mixed}</span>
                 {report.student_impact.unknown > 0 && <span className="rounded-lg bg-slate-100 px-3 py-2">Неизвестно: {report.student_impact.unknown}</span>}
               </div>
+              {report.student_impact.mixed > 0 && <p className="text-xs leading-5 text-slate-600">Смешанный эффект: у группы стало меньше окон, но выросла суммарная длительность учебных дней за неделю, или наоборот.</p>}
               {!!report.student_warnings?.length && (
                 <div role="status" className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
                   <p className="font-semibold">Есть ухудшения в расписаниях групп</p>
@@ -260,11 +262,6 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                 <SummaryMetric label="После" value={metric(teacher.after.minutes)} />
                 <SummaryMetric label="Экономия / рост" value={savings(teacher.time_saved)} />
               </div>
-              <TransitionProblems stats={teacher.before} label="До" />
-              <TransitionProblems stats={teacher.after} label="После" />
-              {(teacher.before.unknown_transitions > 0 || teacher.after.unknown_transitions > 0) && (
-                <p className="mt-2 text-xs text-amber-700">Есть переходы без подтверждённого времени; показатели могут быть неполными.</p>
-              )}
             </div>
           ))}
         </div>
@@ -299,8 +296,11 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                 </span>
               </div>
               <p className="mt-2 text-sm text-slate-600">Изменено занятий: {group.changes_count}</p>
+              {group.timetable && <GroupTimetableComparison timetable={group.timetable} />}
               {group.before && group.after && (
-                <div className="mt-3 space-y-3">
+                <details className="mt-3 rounded-xl border border-slate-200 p-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-slate-800">Показатели группы: окна и длительность занятий</summary>
+                  <div className="mt-3 space-y-3">
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <SummaryMetric label="Окон до" value={group.before.windows == null ? "—" : String(group.before.windows)} />
                     <SummaryMetric label="Окон после" value={group.after.windows == null ? "—" : String(group.after.windows)} />
@@ -313,17 +313,6 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                     <SummaryMetric label="Чистое время занятий до" value={group.before.teaching_minutes == null ? "—" : duration(group.before.teaching_minutes)} />
                     <SummaryMetric label="Чистое время занятий после" value={group.after.teaching_minutes == null ? "—" : duration(group.after.teaching_minutes)} />
                   </div>
-                  {group.timetable && (
-                    <details className="rounded-xl border border-slate-200 p-3">
-                      <summary className="cursor-pointer text-sm font-semibold text-slate-800">
-                        Сравнить расписание: слева до, справа после
-                      </summary>
-                      <div className="mt-3 grid items-start gap-3 2xl:grid-cols-2">
-                        <GroupTimetableColumn title="До оптимизации" days={group.timetable.before} optimized={false} />
-                        <GroupTimetableColumn title="После оптимизации" days={group.timetable.after} optimized />
-                      </div>
-                    </details>
-                  )}
                   <details className="rounded-xl border border-slate-200 p-3">
                     <summary className="cursor-pointer text-sm font-medium text-slate-700">Сравнение по дням недели</summary>
                     <div className="mt-3 space-y-2">
@@ -342,7 +331,8 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                       })}
                     </div>
                   </details>
-                </div>
+                  </div>
+                </details>
               )}
               <button type="button" onClick={() => { setGroupFilter(String(group.group_id)); setTab("changes"); }}
                 className="mt-3 text-sm font-medium text-emerald-700 underline">
@@ -356,11 +346,16 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
       {tab === "changes" && (
         <div className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <select aria-label="Фильтр по преподавателю" value={teacherFilter} onChange={e => setTeacherFilter(e.target.value)}
-              className="min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
-              <option value="">Все преподаватели</option>
-              {allTeacherOptions.map(item => <option key={item.teacher_id} value={item.teacher_id}>{item.teacher_name ?? item.teacher_id}</option>)}
-            </select>
+            <div className="min-w-0">
+              <input type="search" aria-label="Поиск преподавателя" placeholder="Все преподаватели — поиск"
+                list={teacherOptionsId} value={teacherFilter} onChange={e => setTeacherFilter(e.target.value)}
+                autoComplete="off" className="w-full min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm text-slate-900" />
+              <datalist id={teacherOptionsId}>
+                {allTeacherOptions.filter(item => (item.teacher_name ?? `Преподаватель #${item.teacher_id}`).toLocaleLowerCase("ru").includes(teacherFilter.trim().toLocaleLowerCase("ru"))).map(item => (
+                  <option key={item.teacher_id} value={item.teacher_name ?? `Преподаватель #${item.teacher_id}`} />
+                ))}
+              </datalist>
+            </div>
             <select aria-label="Фильтр по группе" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}
               className="min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
               <option value="">Все группы</option>
@@ -388,10 +383,9 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                   <p className="mt-1 text-xs text-slate-500">
                     {DAYS[change.weekday] ?? `День ${change.weekday}`} · {change.teacher_name ?? `Преподаватель #${change.teacher_id}`}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">{change.groups.map(group => group.name + (group.subgroup_number ? ` (подгруппа ${group.subgroup_number})` : "")).join(", ")}</p>
+                  <p className="mt-2 inline-block rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-bold text-emerald-900">{change.groups.map(group => group.name + (group.subgroup_number ? ` (подгруппа ${group.subgroup_number})` : "")).join(", ")}</p>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {change.change_types.includes("room") && <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-800">Аудитория</span>}
                   {change.change_types.includes("time") && <span className="rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800">Время</span>}
                 </div>
               </div>
@@ -411,7 +405,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
                       <p>Переходы непосредственно до и после занятия: {metric(change.adjacent_transitions.before.minutes)} → {metric(change.adjacent_transitions.after.minutes)}.</p>
                       <TransitionProblems stats={change.adjacent_transitions.before} label="До" />
                       <TransitionProblems stats={change.adjacent_transitions.after} label="После" />
-                      <p className="mt-1 text-slate-500">Эти локальные показатели могут пересекаться с показателями соседних занятий и не суммируются.</p>
+                      <p className="mt-1 text-slate-500">Один переход может быть показан в двух соседних карточках. Не складывайте эти значения: общий итог учитывает каждый переход один раз.</p>
                     </div>
                   )}
                 </div>
@@ -445,10 +439,12 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
 }
 
 function Assignment({ label, room, start, end }: { label: string; room: string; start: string; end: string }) {
+  const pairs = [["08:30", "10:05"], ["10:15", "11:50"], ["12:00", "13:35"], ["14:30", "16:05"], ["16:15", "17:50"], ["18:00", "19:35"]];
+  const pair = pairs.findIndex(([from, to]) => from === start.slice(0, 5) && to === end.slice(0, 5));
   return (
     <div className="rounded-xl bg-slate-50 p-3">
       <span className="text-xs font-semibold text-slate-500">{label}</span>
-      <p className="mt-1 flex items-center gap-1 text-sm font-medium"><Clock3 className="h-3.5 w-3.5" />{start}–{end}</p>
+      <p className="mt-1 flex items-center gap-1 text-sm font-medium"><Clock3 className="h-3.5 w-3.5" />{pair >= 0 ? `${pair + 1}-я пара · ` : "Вне сетки пар · "}{start}–{end}</p>
       <p className="mt-1 flex items-center gap-1 text-sm text-slate-600"><DoorOpen className="h-3.5 w-3.5" />{room}</p>
     </div>
   );
@@ -508,4 +504,21 @@ function TransitionProblems({ stats, label }: { stats: TransitionMetrics; label:
     {stats.unknown_transitions > 0 && stats.known_minutes != null && <p className="mt-1">Известная часть: {stats.known_minutes} мин (не полная сумма).</p>}
     {stats.issues?.map(issue => <p key={`${issue.previous_entry_id}-${issue.current_entry_id}`} className="mt-1">Записи #{issue.previous_entry_id} → #{issue.current_entry_id}: {issue.required_minutes == null ? "маршрут или время доступа неизвестны" : `нужно ${issue.required_minutes} мин, доступно ${issue.available_minutes} мин`}.</p>)}
   </div>;
+}
+
+function GroupTimetableComparison({ timetable }: { timetable: GroupTimetable }) {
+  const signature = (day?: GroupScheduleDay) => JSON.stringify((day?.lessons ?? [])
+    .map(lesson => [lesson.entry_id, lesson.start_time, lesson.end_time, lesson.room_name, lesson.teacher_name, lesson.subject_name])
+    .sort((a, b) => Number(a[0]) - Number(b[0])));
+  const weekdays = [...new Set([...timetable.before, ...timetable.after].map(day => day.weekday))]
+    .filter(weekday => signature(timetable.before.find(day => day.weekday === weekday)) !== signature(timetable.after.find(day => day.weekday === weekday)))
+    .sort((a, b) => a - b);
+  const days = (source: GroupScheduleDay[]) => weekdays.map(weekday => source.find(day => day.weekday === weekday) ?? { weekday, lessons: [] });
+  return <details open className="mt-3 rounded-xl border border-slate-200 p-3">
+    <summary className="cursor-pointer text-sm font-semibold text-slate-800">Сравнить расписание: слева до, справа после</summary>
+    {weekdays.length ? <div className="mt-3 grid items-start gap-3 2xl:grid-cols-2">
+      <GroupTimetableColumn title="До оптимизации" days={days(timetable.before)} optimized={false} />
+      <GroupTimetableColumn title="После оптимизации" days={days(timetable.after)} optimized />
+    </div> : <p className="mt-3 text-sm text-slate-500">Расписание группы не изменилось.</p>}
+  </details>;
 }
