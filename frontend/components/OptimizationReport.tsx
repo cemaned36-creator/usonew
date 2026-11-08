@@ -150,7 +150,7 @@ const metric = (minutes: number | null) => minutes == null ? "Не рассчи�
 const savings = (value: number | null) =>
   value == null ? "Не рассчитано" : value > 0 ? `−${value} мин` : value < 0 ? `+${Math.abs(value)} мин` : "Без изменений";
 
-export default function OptimizationReport({ report }: { report: OptimizationDetailedReport }) {
+export default function OptimizationReport({ report, historical = false }: { report: OptimizationDetailedReport; historical?: boolean }) {
   const [tab, setTab] = useState<Tab>("summary");
   const [teacherFilter, setTeacherFilter] = useState("");
   const teacherOptionsId = useId();
@@ -177,7 +177,7 @@ export default function OptimizationReport({ report }: { report: OptimizationDet
       <div className="mb-5">
         <h2 className="text-lg font-semibold text-slate-900">Подробный обзор изменений</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Сравнение рассчитано для предварительного плана. Пока изменения не подтверждены, база данных не меняется.
+          {historical ? "Исторический снимок на момент расчёта. Текущее расписание может отличаться." : "Сравнение рассчитано для предварительного плана. Пока изменения не подтверждены, база данных не меняется."}
         </p>
       </div>
       <div role="tablist" aria-label="Разделы отчёта" className="mb-5 flex flex-wrap gap-2">

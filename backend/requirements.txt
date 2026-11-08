@@ -21,3 +21,4 @@ uvicorn==0.54.0
 openpyxl
 python-multipart
 tzdata
+reportlab==4.4.9
