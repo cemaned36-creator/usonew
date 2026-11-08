@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { History, LoaderCircle, RotateCcw } from "lucide-react";
+import PdfExportButton from "@/components/PdfExportButton";
 import OptimizationReport from "@/components/OptimizationReport";
 import type { OptimizationDetailedReport } from "@/components/OptimizationReport";
 
@@ -87,6 +88,7 @@ export default function OptimizationHistory({ weekType, teacherId, revision, dis
           <div><h3 className="text-sm font-semibold">#{run.id} · {dateLabel(run.created_at)}</h3><p className="mt-1 text-sm">{run.teacher_name ?? (run.teacher_id ? `Преподаватель #${run.teacher_id}` : "Все преподаватели")} · {run.changes_count} изменений</p><p className="mt-1 text-xs text-slate-500">Переходы на момент расчёта: {minutes(run.metrics.transition_time_before)} → {minutes(run.metrics.transition_time_after)}</p></div>
           {run.restored_at ? <p className="text-xs text-slate-500">Отменено {dateLabel(run.restored_at)}</p> : <button type="button" disabled={disabled || working !== null || confirmation !== null} onClick={() => restore(run, false)} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium disabled:opacity-50">{working === run.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}Проверить возврат</button>}
         </div>
+        <div className="mt-3"><PdfExportButton historyId={run.id} weekType={weekType} teacherId={run.teacher_id} /></div>
         {run.metrics?.detailed_report && (
           <div className="mt-3">
             <button type="button" aria-expanded={openReportId === run.id}
@@ -96,7 +98,7 @@ export default function OptimizationHistory({ weekType, teacherId, revision, dis
             </button>
             {openReportId === run.id && (
               <div className="mt-3">
-                <OptimizationReport report={run.metrics.detailed_report} />
+                <OptimizationReport report={run.metrics.detailed_report} historical />
                 <p className="mt-2 text-xs text-slate-500">Исторический снимок на момент расчёта. Последующие изменения расписания на эти показатели не влияют.</p>
               </div>
             )}

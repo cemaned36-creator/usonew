@@ -20,7 +20,7 @@ def record_run(db, *, week_type, teacher_id, teacher_name, before, after, previe
     run = OptimizationRun(week_type=week_type, teacher_id=teacher_id,
                           teacher_name=teacher_name, before_entries=before,
                           after_entries=after, metrics={key: preview.get(key) for key in
-                          ('transition_time_before', 'transition_time_after', 'time_saved', 'detailed_report')})
+                          ('transition_time_before', 'transition_time_after', 'time_saved', 'detailed_report', 'warnings', 'constraint_issues', 'can_apply')})
     db.add(run)
     db.flush()  # The caller owns the transaction, including any failure.
     return run

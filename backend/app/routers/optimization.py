@@ -396,3 +396,69 @@ def restore_optimization(
     db: Session = Depends(get_db),
 ):
     return restore_run(db, run_id, week_type, teacher_id)
+
+
+class PreviewPdfRequest(BaseModel):
+    week_type: Literal["odd", "even"]
+    teacher_id: int | None = Field(default=None, ge=1)
+    detailed_report: dict
+    warnings: list[str] = Field(default_factory=list, max_length=1000)
+    constraint_issues: list[dict] = Field(default_factory=list, max_length=1000)
+    can_apply: bool = False
+
+
+def _pdf_response(content, filename):
+    from fastapi.responses import Response
+    return Response(content, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
+@router.post("/export-preview")
+def export_preview_pdf(payload: PreviewPdfRequest):
+    # Export the displayed snapshot, never rerun the optimizer or write assignments.
+    import json
+    from app.services.optimization_pdf import render_optimization_pdf
+    from reportlab.platypus.doctemplate import LayoutError
+    report = payload.detailed_report
+    if len(json.dumps(payload.model_dump(), ensure_ascii=False).encode()) > 3_000_000:
+        raise HTTPException(413, "Отчёт слишком большой для экспорта.")
+    if report.get("week_type") != payload.week_type or report.get("teacher_id") != payload.teacher_id:
+        raise HTTPException(422, "Неделя или преподаватель отчёта не совпадает с выбранными.")
+    if not isinstance(report.get("summary"), dict) or any(
+        not isinstance(report.get(key), list) or len(report[key]) > 2000
+        or any(not isinstance(item, dict) for item in report[key])
+        for key in ("teachers", "groups", "changes")
+    ):
+        raise HTTPException(422, "Неполные данные подробного отчёта.")
+    try:
+        content = render_optimization_pdf(report, week_type=payload.week_type, teacher_id=payload.teacher_id,
+            warnings=payload.warnings, constraint_issues=payload.constraint_issues, can_apply=payload.can_apply)
+    except (ValueError, TypeError, KeyError, IndexError, AttributeError, LayoutError) as exc:
+        raise HTTPException(422, "Не удалось сформировать PDF: некорректные данные отчёта. Обновите расчёт.") from exc
+    return _pdf_response(content, f"uso-preview-{payload.week_type}-{payload.teacher_id or 'all'}.pdf")
+
+
+@router.get("/history/{run_id}/export")
+def export_history_pdf(run_id: int, week_type: Literal["odd", "even"],
+                       teacher_id: int | None = Query(default=None, ge=1), db: Session = Depends(get_db)):
+    from app.services.optimization_pdf import render_optimization_pdf
+    run = db.get(OptimizationRun, run_id)
+    if run is None:
+        raise HTTPException(404, "Запись истории не найдена.")
+    if run.week_type != week_type or (teacher_id is not None and run.teacher_id != teacher_id):
+        raise HTTPException(409, "Запись истории относится к другой неделе или преподавателю.")
+    metrics = run.metrics or {}
+    report = metrics.get('detailed_report')
+    if not report:
+        # Old operations remain exportable, without inventing lost names/metrics.
+        report = {"summary": {**metrics, "changed_entries": len(run.before_entries)},
+                  "teachers": [], "groups": [], "changes": [
+            {"entry_id": a['id'], "lesson_id": a['lesson_id'], "weekday": a['weekday'],
+             "before": a, "after": b} for a, b in zip(run.before_entries, run.after_entries)]}
+    content = render_optimization_pdf(report, week_type=run.week_type, teacher_id=run.teacher_id,
+        teacher_name=run.teacher_name, history=serialize_run(run), warnings=metrics.get('warnings'),
+        constraint_issues=metrics.get('constraint_issues'))
+    return _pdf_response(content, f"uso-history-{run.id}-{run.week_type}.pdf")

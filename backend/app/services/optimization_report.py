@@ -9,7 +9,7 @@ from collections import defaultdict
 from app.services.optimization import _required_transition_minutes, _is_sports_entry, _minutes
 from app.services.room_scope import room_in_active_scope
 from app.services.teacher_conditions import room_allowed, time_allowed
-from app.services.group_schedule_quality import build_group_quality
+from app.services.group_schedule_quality import build_group_quality, _schedule_days
 
 
 def _time(value):
@@ -227,8 +227,19 @@ def build_optimization_report(
     for teacher_id in teacher_ids:
         b = _aggregate(before_stats, teacher_id)
         a = _aggregate(after_stats, teacher_id)
+        teacher_timetable = None
+        if teacher_change_ids.get(teacher_id):
+            versions = {}
+            for label, source in (("before", before_entries), ("after", after_entries)):
+                day_map = defaultdict(list)
+                for entry in source:
+                    if lessons.get(entry.lesson_id) and lessons[entry.lesson_id].teacher_id == teacher_id:
+                        day_map[entry.weekday].append(entry)
+                versions[label] = _schedule_days(day_map, lessons, rooms, teachers, subjects, teacher_change_ids[teacher_id])
+            teacher_timetable = versions
         teacher_report.append({
             "teacher_id": teacher_id,
+            "timetable": teacher_timetable,
             "teacher_name": getattr(teachers.get(teacher_id), "name", None),
             "changes_count": len(teacher_change_ids.get(teacher_id, ())),
             "before": b,

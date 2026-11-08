@@ -4,6 +4,7 @@ import LessonTypeBadge from "@/components/LessonTypeBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import OptimizationHistory from "@/components/OptimizationHistory";
+import PdfExportButton from "@/components/PdfExportButton";
 import OptimizationReport from "@/components/OptimizationReport";
 import type { OptimizationDetailedReport } from "@/components/OptimizationReport";
 import BrandLogo from "@/components/BrandLogo";
@@ -645,6 +646,7 @@ export default function OptimizationPage() {
                       )}
                     </section>
 
+                    {result.detailed_report && <PdfExportButton weekType={result.week_type} teacherId={result.teacher_id} preview={result} />}
                     {result.detailed_report && <OptimizationReport key={`${result.week_type}:${result.teacher_id ?? "all"}`} report={result.detailed_report} />}
 
                     <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
