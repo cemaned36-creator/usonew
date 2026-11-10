@@ -722,7 +722,9 @@ def _preview_optimization(
     issues = condition_issues(all_entries, lessons, rooms, teachers)
     if not issues:
         try:
-            validate_weekly_entries(db, [SimpleNamespace(**vars(entry), week_type=week_type) for entry in all_entries],\n                exempt_transition_pairs=unchanged_baseline_transition_exemptions(\n                    db, report_before_entries, all_entries, lessons, rooms, teacher_id))
+            validate_weekly_entries(db, [SimpleNamespace(**vars(entry), week_type=week_type) for entry in all_entries],
+                exempt_transition_pairs=unchanged_baseline_transition_exemptions(
+                    db, report_before_entries, all_entries, lessons, rooms, teacher_id))
         except ValueError as exc:
             issues.append({"entry_id": None, "teacher_id": None, "reason": str(exc)})
     warnings = []
