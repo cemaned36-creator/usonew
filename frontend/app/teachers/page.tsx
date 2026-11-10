@@ -187,12 +187,6 @@ export default function TeachersPage() {
 
                       {expanded && (
                         <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-5 sm:px-6">
-                          <TeacherConditionsForm
-                            teacher={teacher}
-                            rooms={rooms}
-                            editable={profileLoaded && (profileRole === "admin" || profileTeacherId === teacher.id)}
-                            onSaved={(conditions) => setTeachers((items) => items.map((item) => item.id === teacher.id ? { ...item, ...conditions } : item))}
-                          />
                           {teacherLessons.length === 0 ? (
                             <p className="text-sm text-slate-500">За этим преподавателем пока не закреплены дисциплины и группы.</p>
                           ) : (
@@ -218,6 +212,12 @@ export default function TeachersPage() {
                               </div>
                             </div>
                           )}
+                          <TeacherConditionsForm
+                            teacher={teacher}
+                            rooms={rooms}
+                            editable={profileLoaded && (profileRole === "admin" || profileTeacherId === teacher.id)}
+                            onSaved={(conditions) => setTeachers((items) => items.map((item) => item.id === teacher.id ? { ...item, ...conditions } : item))}
+                          />
                           <div className="mt-4 border-t border-slate-200 pt-4">
                             <p className="text-xs text-slate-400">Всего записей о занятиях: {teacherLessons.length}</p>
                           </div>
@@ -277,7 +277,7 @@ function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
       setFailed(true); setMessage(error instanceof Error ? error.message : "Ошибка сохранения.");
     } finally { setSaving(false); }
   }
-  return <form onSubmit={save} className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+  return <form onSubmit={save} className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
     <h3 className="text-sm font-semibold text-slate-900">Условия расписания</h3>
     <p className="mt-1 text-xs leading-5 text-slate-500">Действуют каждый учебный день, на обеих неделях. Сохранение условий не изменяет занятия автоматически.</p>
     <fieldset disabled={!editable || saving} className="mt-4 space-y-4">
@@ -297,15 +297,17 @@ function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
         <span>Предпочитать аудитории ближе ко входу<span className="mt-1 block text-xs leading-5 text-slate-500">Вход у охраны Главного корпуса. Среди подходящих аудиторий выбираются ближайшие по времени пути. Переходы между парами могут стать длиннее.</span></span>
       </label>
       <p className="text-xs leading-5 text-slate-500">Время начала и этаж — обязательные ограничения. Если подходящей аудитории или свободного времени нет, система покажет причину. Оптимизация переносит ранние занятия на свободные пары того же дня; при неудаче потребуется пересоставить расписание.</p>
-      <section className="space-y-3" aria-label="Предпочтения по аудиториям">
+    </fieldset>
+      <section className="mt-4 space-y-3" aria-label="Предпочтения по аудиториям">
         <h4 className="text-sm font-semibold">Предпочтительные аудитории по типу занятия</h4>
         <p className="text-xs leading-5 text-slate-500">Можно выбрать несколько равнозначных вариантов. Пустой список означает любую подходящую аудиторию. Выбранные аудитории имеют приоритет перед близостью ко входу и сокращением переходов, но не отменяют требования к оборудованию, вместимости, этажу и допустимым перерывам. Если они недоступны, система подберёт другую подходящую аудиторию.</p>
         {[["Лекция", "Лекции"], ["Практика", "Практические занятия"], ["Лабораторная", "Лабораторные занятия"]].map(([type, label]) =>
-          <RoomPreferencePicker key={type} label={label} rooms={rooms}
+          <RoomPreferencePicker key={type} label={label} rooms={rooms} disabled={!editable || saving}
             selected={draft.preferred_rooms_by_type[type] ?? []}
             onChange={(ids) => setDraft((value) => ({ ...value, preferred_rooms_by_type: { ...value.preferred_rooms_by_type, [type]: ids } }))} />
         )}
       </section>
+    <fieldset disabled={!editable || saving} className="mt-4">
       {editable && <div className="flex flex-wrap gap-3">
         <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{saving ? "Сохраняем…" : "Сохранить условия"}</button>
         <button type="button" onClick={() => { setDraft({ earliest_start_pair: 1, max_floor: null, prefer_near_entrance: false, preferred_rooms_by_type: {} }); setMessage("Ограничения сброшены в форме. Нажмите «Сохранить условия»."); setFailed(false); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">Сбросить</button>
@@ -316,25 +318,28 @@ function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
 }
 
 
-function RoomPreferencePicker({ label, rooms, selected, onChange }: {
-  label: string; rooms: Room[]; selected: number[]; onChange: (ids: number[]) => void;
+function RoomPreferencePicker({ label, rooms, selected, onChange, disabled }: {
+  label: string; rooms: Room[]; selected: number[]; disabled: boolean; onChange: (ids: number[]) => void;
 }) {
   const [query, setQuery] = useState("");
   const ordered = [...rooms].sort((a, b) => Number(selected.includes(b.id)) - Number(selected.includes(a.id)) || a.name.localeCompare(b.name, "ru", { numeric: true }));
-  const visible = ordered.filter((room) => `${room.name} ${room.building}`.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")));
+  const normalize = (value: string) => value.toLocaleLowerCase("ru").replace(/ё/g, "е").replace(/[‐‑–—−]/g, "-").replace(/\s+/g, "");
+  const terms = query.trim().split(/\s+/).filter(Boolean).map(normalize);
+  const visible = ordered.filter((room) => terms.every((term) => normalize(`${room.name} ${room.building}`).includes(term)));
   return <details className="rounded-xl border border-slate-200 bg-slate-50">
     <summary className="cursor-pointer px-4 py-3 text-sm font-medium">{label} · {selected.length ? `Выбрано: ${selected.length}` : "Любая подходящая"}</summary>
     <div className="space-y-3 px-4 pb-4">
       {selected.length > 0 && <p className="text-xs text-slate-600">{rooms.filter((room) => selected.includes(room.id)).map((room) => room.name).join(", ")}</p>}
-      <input type="search" aria-label={`Поиск аудитории: ${label}`} placeholder="Найти аудиторию…" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+      <input type="search" aria-label={`Поиск аудитории: ${label}`} placeholder="Номер аудитории или корпус…" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+      <p role="status" className="text-xs text-slate-500">Найдено: {visible.length}</p>
       <div className="max-h-60 space-y-1 overflow-y-auto">
         {visible.map((room) => <label key={room.id} className="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-white">
-          <input type="checkbox" checked={selected.includes(room.id)} onChange={(event) => onChange(event.target.checked ? [...selected, room.id] : selected.filter((id) => id !== room.id))} className="h-4 w-4" />
+          <input type="checkbox" disabled={disabled} checked={selected.includes(room.id)} onChange={(event) => onChange(event.target.checked ? [...selected, room.id] : selected.filter((id) => id !== room.id))} className="h-4 w-4" />
           <span><strong>{room.name}</strong><span className="block text-xs text-slate-500">{room.building} · этаж {room.floor} · мест: {room.capacity}</span></span>
         </label>)}
         {!visible.length && <p className="py-2 text-sm text-slate-500">Аудитории не найдены.</p>}
       </div>
-      {selected.length > 0 && <button type="button" onClick={() => onChange([])} className="text-sm font-medium text-slate-700 underline">Снять выбор для этого типа</button>}
+      {selected.length > 0 && <button type="button" disabled={disabled} onClick={() => onChange([])} className="text-sm font-medium text-slate-700 underline">Снять выбор для этого типа</button>}
     </div>
   </details>;
 }
