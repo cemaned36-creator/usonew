@@ -74,7 +74,12 @@ class TransitionRepairTest(unittest.TestCase):
     def test_teacher_filter_does_not_repair_someone_else(self):
         preview=preview_optimization(self.db,'odd',3)
         self.assertEqual(preview['changes'],[])
-        self.assertFalse(preview['can_apply'])  # Full schedule remains invalid.
+        self.assertTrue(preview['can_apply'])  # Unchanged other-teacher violations are warnings.
+
+    def test_unchanged_other_teacher_transition_is_warning(self):
+        preview = preview_optimization(self.db, 'odd', 3)
+        self.assertTrue(preview['can_apply'])
+        self.assertTrue(any('ранее существовавших' in w for w in preview['warnings']))
 
     def test_disconnected_rooms_can_be_repaired_without_inventing_a_route(self):
         self.db.query(RoomConnection).delete();self.db.commit()
