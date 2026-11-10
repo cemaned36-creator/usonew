@@ -18,7 +18,8 @@ import {
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
-type Conditions = { earliest_start_pair: number; max_floor: number | null; prefer_near_entrance: boolean };
+type Room = { id: number; name: string; building: string; floor: number; capacity: number };
+type Conditions = { earliest_start_pair: number; max_floor: number | null; prefer_near_entrance: boolean; preferred_rooms_by_type: Record<string, number[]> };
 type Teacher = Conditions & { id: number; name: string; email?: string | null };
 type Lesson = { id: number; teacher_id: number; subject_id: number; group_id: number };
 type NamedItem = { id: number; name: string; students_count?: number };
@@ -27,6 +28,7 @@ export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [subjects, setSubjects] = useState<NamedItem[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [groups, setGroups] = useState<NamedItem[]>([]);
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -57,17 +59,18 @@ export default function TeachersPage() {
     async function load() {
       try {
         if (!API) throw new Error("Не задан NEXT_PUBLIC_API_URL для frontend.");
-        const paths = ["/teachers/", "/lessons/", "/subjects/", "/student-groups/"];
+        const paths = ["/teachers/", "/lessons/", "/subjects/", "/student-groups/", "/rooms/"];
         const responses = await Promise.all(paths.map((path) => fetch(`${API}${path}`)));
         const failed = responses.find((response) => !response.ok);
         if (failed) throw new Error(`Не удалось загрузить данные: HTTP ${failed.status}`);
-        const [teacherData, lessonData, subjectData, groupData] = await Promise.all(
+        const [teacherData, lessonData, subjectData, groupData, roomData] = await Promise.all(
           responses.map((response) => response.json())
         );
         setTeachers(Array.isArray(teacherData) ? teacherData : []);
         setLessons(Array.isArray(lessonData) ? lessonData : []);
         setSubjects(Array.isArray(subjectData) ? subjectData : []);
         setGroups(Array.isArray(groupData) ? groupData : []);
+        setRooms(Array.isArray(roomData) ? roomData : []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Не удалось загрузить список преподавателей.");
       } finally {
@@ -186,6 +189,7 @@ export default function TeachersPage() {
                         <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-5 sm:px-6">
                           <TeacherConditionsForm
                             teacher={teacher}
+                            rooms={rooms}
                             editable={profileLoaded && (profileRole === "admin" || profileTeacherId === teacher.id)}
                             onSaved={(conditions) => setTeachers((items) => items.map((item) => item.id === teacher.id ? { ...item, ...conditions } : item))}
                           />
@@ -242,13 +246,14 @@ function NavItem({ href, label, icon, active = false }: { href: string; label: s
 }
 
 
-function TeacherConditionsForm({ teacher, editable, onSaved }: {
-  teacher: Teacher; editable: boolean; onSaved: (value: Conditions) => void;
+function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
+  teacher: Teacher; rooms: Room[]; editable: boolean; onSaved: (value: Conditions) => void;
 }) {
   const [draft, setDraft] = useState<Conditions>({
     earliest_start_pair: teacher.earliest_start_pair ?? 1,
     max_floor: teacher.max_floor ?? null,
     prefer_near_entrance: teacher.prefer_near_entrance ?? false,
+    preferred_rooms_by_type: teacher.preferred_rooms_by_type ?? {},
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -289,15 +294,47 @@ function TeacherConditionsForm({ teacher, editable, onSaved }: {
         </label>
       </div>
       <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 h-4 w-4" checked={draft.prefer_near_entrance} onChange={(event) => setDraft({ ...draft, prefer_near_entrance: event.target.checked })} />
-        <span>Предпочитать аудитории ближе ко входу<span className="mt-1 block text-xs leading-5 text-slate-500">Вход у охраны корпуса Б. Среди подходящих аудиторий выбираются ближайшие по демонстрационным расстояниям. Переходы между парами могут стать длиннее.</span></span>
+        <span>Предпочитать аудитории ближе ко входу<span className="mt-1 block text-xs leading-5 text-slate-500">Вход у охраны Главного корпуса. Среди подходящих аудиторий выбираются ближайшие по времени пути. Переходы между парами могут стать длиннее.</span></span>
       </label>
       <p className="text-xs leading-5 text-slate-500">Время начала и этаж — обязательные ограничения. Если подходящей аудитории или свободного времени нет, система покажет причину. Оптимизация переносит ранние занятия на свободные пары того же дня; при неудаче потребуется пересоставить расписание.</p>
+      <section className="space-y-3" aria-label="Предпочтения по аудиториям">
+        <h4 className="text-sm font-semibold">Предпочтительные аудитории по типу занятия</h4>
+        <p className="text-xs leading-5 text-slate-500">Можно выбрать несколько равнозначных вариантов. Пустой список означает любую подходящую аудиторию. Выбранные аудитории имеют приоритет перед близостью ко входу и сокращением переходов, но не отменяют требования к оборудованию, вместимости, этажу и допустимым перерывам. Если они недоступны, система подберёт другую подходящую аудиторию.</p>
+        {[["Лекция", "Лекции"], ["Практика", "Практические занятия"], ["Лабораторная", "Лабораторные занятия"]].map(([type, label]) =>
+          <RoomPreferencePicker key={type} label={label} rooms={rooms}
+            selected={draft.preferred_rooms_by_type[type] ?? []}
+            onChange={(ids) => setDraft((value) => ({ ...value, preferred_rooms_by_type: { ...value.preferred_rooms_by_type, [type]: ids } }))} />
+        )}
+      </section>
       {editable && <div className="flex flex-wrap gap-3">
         <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{saving ? "Сохраняем…" : "Сохранить условия"}</button>
-        <button type="button" onClick={() => { setDraft({ earliest_start_pair: 1, max_floor: null, prefer_near_entrance: false }); setMessage("Ограничения сброшены в форме. Нажмите «Сохранить условия»."); setFailed(false); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">Сбросить</button>
+        <button type="button" onClick={() => { setDraft({ earliest_start_pair: 1, max_floor: null, prefer_near_entrance: false, preferred_rooms_by_type: {} }); setMessage("Ограничения сброшены в форме. Нажмите «Сохранить условия»."); setFailed(false); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm">Сбросить</button>
       </div>}
     </fieldset>
     {message && <p role={failed ? "alert" : "status"} className={`mt-3 text-sm ${failed ? "text-red-700" : "text-slate-700"}`}>{message}</p>}
   </form>;
 }
 
+
+function RoomPreferencePicker({ label, rooms, selected, onChange }: {
+  label: string; rooms: Room[]; selected: number[]; onChange: (ids: number[]) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const ordered = [...rooms].sort((a, b) => Number(selected.includes(b.id)) - Number(selected.includes(a.id)) || a.name.localeCompare(b.name, "ru", { numeric: true }));
+  const visible = ordered.filter((room) => `${room.name} ${room.building}`.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")));
+  return <details className="rounded-xl border border-slate-200 bg-slate-50">
+    <summary className="cursor-pointer px-4 py-3 text-sm font-medium">{label} · {selected.length ? `Выбрано: ${selected.length}` : "Любая подходящая"}</summary>
+    <div className="space-y-3 px-4 pb-4">
+      {selected.length > 0 && <p className="text-xs text-slate-600">{rooms.filter((room) => selected.includes(room.id)).map((room) => room.name).join(", ")}</p>}
+      <input type="search" aria-label={`Поиск аудитории: ${label}`} placeholder="Найти аудиторию…" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+      <div className="max-h-60 space-y-1 overflow-y-auto">
+        {visible.map((room) => <label key={room.id} className="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-white">
+          <input type="checkbox" checked={selected.includes(room.id)} onChange={(event) => onChange(event.target.checked ? [...selected, room.id] : selected.filter((id) => id !== room.id))} className="h-4 w-4" />
+          <span><strong>{room.name}</strong><span className="block text-xs text-slate-500">{room.building} · этаж {room.floor} · мест: {room.capacity}</span></span>
+        </label>)}
+        {!visible.length && <p className="py-2 text-sm text-slate-500">Аудитории не найдены.</p>}
+      </div>
+      {selected.length > 0 && <button type="button" onClick={() => onChange([])} className="text-sm font-medium text-slate-700 underline">Снять выбор для этого типа</button>}
+    </div>
+  </details>;
+}

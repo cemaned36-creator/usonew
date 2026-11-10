@@ -68,3 +68,11 @@ def entrance_cost(room_id, teacher, distances):
     if not getattr(teacher, "prefer_near_entrance", False):
         return 0.0
     return distances.get(room_id, float("inf"))
+
+
+def preferred_room_cost(room_id, teacher, lesson):
+    """Soft preference; never replaces capacity, equipment or conflict checks."""
+    choices = (getattr(teacher, "preferred_rooms_by_type", None) or {}).get(
+        getattr(lesson, "lesson_type", None), []
+    )
+    return int(bool(choices) and room_id not in choices)

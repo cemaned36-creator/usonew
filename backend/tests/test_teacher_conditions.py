@@ -137,6 +137,75 @@ class ConditionsTest(unittest.TestCase):
         self.assertIsNone(self.db.get(Teacher,1).max_floor)
         self.assertEqual(self.db.get(WeeklyScheduleEntry,1).start_time,time(8,30))
 
+    def save_room_preferences(self, mapping, **kwargs):
+        return update_conditions(1, TeacherConditions(earliest_start_pair=1,
+            preferred_rooms_by_type=mapping, **kwargs), self.db)
+
+    def test_room_preferences_are_type_specific_and_soft(self):
+        self.save_room_preferences({"Лекция": [1], "Практика": [2], "Лабораторная": [3]})
+        preview = preview_optimization(self.db, "odd", 1)
+        self.assertTrue(preview["can_apply"])
+        self.assertEqual(preview["changes"][0]["new_room_id"], 1)
+        self.assertEqual(self.db.get(WeeklyScheduleEntry, 1).room_id, 3)
+        self.db.get(Lesson, 1).lesson_type = "Практика"
+        self.db.commit()
+        self.assertEqual(preview_optimization(self.db, "odd", 1)["changes"][0]["new_room_id"], 2)
+        self.db.get(Room, 2).capacity = 5
+        self.db.commit()
+        fallback = preview_optimization(self.db, "odd", 1)
+        self.assertTrue(fallback["can_apply"])
+        self.assertFalse(any(c["new_room_id"] == 2 for c in fallback["changes"]))
+        self.assertTrue(fallback["warnings"])
+
+    def test_room_preferences_generation_and_recommendation(self):
+        from app.services.optimizer import recommend_room
+        self.save_room_preferences({"Лекция": [1]}, prefer_near_entrance=True)
+        for week in ["odd", "even"]:
+            preview = generate_weekly_preview(self.db, week)
+            self.assertEqual(preview["entries"][0].room_id, 1)
+        result = recommend_room(self.db, 1)
+        self.assertEqual(result["room_id"], 1)
+
+    def test_preferred_room_occupied_is_not_selected(self):
+        self.save_room_preferences({"Лекция": [1]})
+        self.db.add(Lesson(id=2, teacher_id=2, subject_id=1, group_id=2))
+        self.db.flush()
+        self.db.add_all([LessonGroup(lesson_id=2, group_id=2, subgroup_number=0),
+            LessonRequirement(lesson_id=2, min_capacity=20),
+            WeeklyScheduleEntry(id=3, lesson_id=2, weekday=0, week_type="odd",
+                                room_id=1, start_time=time(8,30), end_time=time(10,5))])
+        self.db.commit()
+        preview = preview_optimization(self.db, "odd", 1)
+        self.assertTrue(preview["can_apply"])
+        self.assertFalse(any(c["new_room_id"] == 1 for c in preview["changes"]))
+
+    def test_room_preferences_api_roundtrip_legacy_and_reset(self):
+        self.save_room_preferences({"Лекция": [1, 2]})
+        self.db.expire_all()
+        self.assertEqual(self.db.get(Teacher, 1).preferred_rooms_by_type, {"Лекция": [1, 2]})
+        self.conditions()
+        self.assertEqual(self.db.get(Teacher, 1).preferred_rooms_by_type, {"Лекция": [1, 2]})
+        with self.assertRaises(HTTPException):
+            self.save_room_preferences({"Лекция": [999]})
+        self.assertEqual(self.db.get(Teacher, 1).preferred_rooms_by_type, {"Лекция": [1, 2]})
+        self.save_room_preferences({})
+        self.assertEqual(self.db.get(Teacher, 1).preferred_rooms_by_type, {})
+
+    def test_room_preferences_reject_invalid_values(self):
+        for mapping in [{"Lecture": [1]}, {"Лекция": [1, 1]}, {"Лекция": [-1]}, {"Лекция": [True]}, {"Лекция": ["1"]}]:
+            with self.assertRaises(ValidationError):
+                TeacherConditions(earliest_start_pair=1, preferred_rooms_by_type=mapping)
+
+    def test_preferred_room_cannot_override_floor_or_equipment(self):
+        self.save_room_preferences({"Лекция": [3]}, max_floor=1)
+        self.assertEqual(preview_optimization(self.db, "odd", 1)["changes"][0]["new_room_id"], 1)
+        self.save_room_preferences({"Лекция": [1]})
+        self.db.get(LessonRequirement, 1).computers_required = True
+        self.db.get(Room, 2).has_computers = True
+        self.db.commit()
+        preview = generate_weekly_preview(self.db, "odd")
+        self.assertEqual(preview["entries"][0].room_id, 2)
+
     def test_strict_request_values(self):
         for values in [{'earliest_start_pair':0},{'earliest_start_pair':4},
                        {'earliest_start_pair':True},{'earliest_start_pair':1,'max_floor':0},

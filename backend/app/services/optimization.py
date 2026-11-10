@@ -21,7 +21,7 @@ from app.services.equipment import (
 from app.models.teacher import Teacher
 from app.services.teacher_conditions import (
     load_teacher_conditions, room_allowed, time_allowed, condition_issues,
-    entrance_distances, entrance_cost,
+    entrance_distances, entrance_cost, preferred_room_cost,
 )
 from app.services.lesson_times import LESSON_PAIRS
 from app.services.weekly_validation import validate_weekly_entries
@@ -276,7 +276,7 @@ def _repair_teacher_conditions(db, entries, rooms_list, rooms, lessons, requirem
                           if _room_fits(room, requirement, students)
                           and room_has_required_profiles(room.id, lesson.id, room_profiles, lesson_profiles)]
         candidates = [room for room in candidates if room_allowed(room, teacher)]
-        candidates.sort(key=lambda room: (entrance_cost(room.id, teacher, distances), room.id != entry.room_id, room.id))
+        candidates.sort(key=lambda room: (preferred_room_cost(room.id, teacher, lesson), entrance_cost(room.id, teacher, distances), room.id != entry.room_id, room.id))
         old = (entry.room_id, entry.start_time, entry.end_time)
         slots = [(start, end) for _, start, end in LESSON_PAIRS if time_allowed(start, teacher)]
         slots.sort(key=lambda slot: (slot != old[1:], slot[0]))
@@ -375,7 +375,7 @@ def _repair_infeasible_transitions(
                         if target in bad or not bad.issubset(old_bad):
                             return
                         preference = sum(entrance_cost(entry.room_id, teacher, distances) for entry in day)
-                        score = (len(bad), preference, total,
+                        score = (len(bad), sum(preferred_room_cost(e.room_id, teacher, lessons[e.lesson_id]) for e in day), preference, total,
                                  tuple((entry.id, room.id) for entry, room in changes))
                         if best is None or score < best[0]:
                             best = (score, list(changes))
@@ -427,8 +427,10 @@ def _optimize_entries(
         return
 
     def preference_total():
-        return sum(entrance_cost(entry.room_id, teachers.get(lessons[entry.lesson_id].teacher_id), distances)
-                   for entry in active_entries)
+        return (
+            sum(preferred_room_cost(e.room_id, teachers.get(lessons[e.lesson_id].teacher_id), lessons[e.lesson_id]) for e in active_entries),
+            sum(entrance_cost(e.room_id, teachers.get(lessons[e.lesson_id].teacher_id), distances) for e in active_entries),
+        )
 
     current_preference = preference_total()
 
@@ -460,7 +462,7 @@ def _optimize_entries(
             )
         ]
 
-        candidates.sort(key=lambda room: (entrance_cost(room.id, teachers.get(lesson.teacher_id), distances), room.id))
+        candidates.sort(key=lambda room: (preferred_room_cost(room.id, teachers.get(lesson.teacher_id), lesson), entrance_cost(room.id, teachers.get(lesson.teacher_id), distances), room.id))
         for candidate in candidates:
             if _has_schedule_conflict(
                 candidate, entry, all_entries, lessons, participants
@@ -687,6 +689,15 @@ def _preview_optimization(
     warnings = []
     if any(teacher.prefer_near_entrance for teacher in teachers.values()) and not distances:
         warnings.append("Нет маршрутов от входа: предпочтение близости сейчас не учитывается.")
+
+    unfulfilled = sum(
+        preferred_room_cost(e.room_id, teachers.get(lessons[e.lesson_id].teacher_id), lessons[e.lesson_id])
+        for e in all_entries
+        if teacher_id is None or lessons[e.lesson_id].teacher_id == teacher_id
+    )
+    if unfulfilled:
+        warnings.append(f"Предпочтительная аудитория не назначена для {unfulfilled} занятий. "
+                        "Предпочтения не обязательны: проверьте доступность аудиторий и остальные ограничения.")
 
     # Additive analytics; legacy response fields and apply payload are unchanged.
     from app.models.subject import Subject

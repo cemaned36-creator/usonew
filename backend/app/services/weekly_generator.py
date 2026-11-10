@@ -28,7 +28,7 @@ from app.services.lesson_participants import (
 from app.services.room_scope import room_in_active_scope
 from app.services.lesson_times import LESSON_PAIRS
 from app.services.weekly_validation import validate_weekly_entries
-from app.services.teacher_conditions import load_teacher_conditions, room_allowed, time_allowed, entrance_distances, entrance_cost
+from app.services.teacher_conditions import load_teacher_conditions, room_allowed, time_allowed, entrance_distances, entrance_cost, preferred_room_cost
 
 
 def minutes(value):
@@ -375,7 +375,7 @@ def generate_weekly_preview(
             for day, number, start, end in slots:
                 room_ids = candidates[lesson_id].copy()
                 rng.shuffle(room_ids)
-                room_ids.sort(key=lambda room_id: entrance_cost(room_id, teachers.get(lessons[lesson_id].teacher_id), distances_from_entrance))
+                room_ids.sort(key=lambda room_id: (preferred_room_cost(room_id, teachers.get(lessons[lesson_id].teacher_id), lessons[lesson_id]), entrance_cost(room_id, teachers.get(lessons[lesson_id].teacher_id), distances_from_entrance)))
                 for room_id in room_ids:
                     entry = SimpleNamespace(
                         id=-(len(generated) + 1),

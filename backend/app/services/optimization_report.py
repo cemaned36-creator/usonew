@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from app.services.optimization import _required_transition_minutes, _is_sports_entry, _minutes
 from app.services.room_scope import room_in_active_scope
-from app.services.teacher_conditions import room_allowed, time_allowed
+from app.services.teacher_conditions import room_allowed, time_allowed, preferred_room_cost
 from app.services.group_schedule_quality import build_group_quality, _schedule_days
 
 
@@ -94,7 +94,7 @@ def _adjacent_transition_effect(db, entries, entry_id, lessons, rooms):
     return _link_stats(db, links, lessons, rooms)
 
 
-def _change_explanation(old, new, teacher, old_room, new_room, before_touch, after_touch):
+def _change_explanation(old, new, teacher, old_room, new_room, before_touch, after_touch, lesson=None):
     """Explain verified facts, without claiming why a search step chose a candidate."""
     reasons = []
     if teacher is not None and not time_allowed(old.start_time, teacher) and time_allowed(new.start_time, teacher):
@@ -111,6 +111,9 @@ def _change_explanation(old, new, teacher, old_room, new_room, before_touch, aft
             "verified": True,
             "text": f"Исправлено превышение разрешённого этажа {floor}.",
         })
+    if preferred_room_cost(old.room_id, teacher, lesson) > preferred_room_cost(new.room_id, teacher, lesson):
+        reasons.append({"code": "preferred_room_selected", "verified": True,
+                        "text": "Выбрана предпочтительная аудитория преподавателя для этого типа занятия."})
     if before_touch.get("insufficient_breaks", 0) > after_touch.get("insufficient_breaks", 0):
         reasons.append({"code": "insufficient_break_fixed", "verified": True,
                         "text": "Уменьшилось число соседних переходов, не укладывающихся в перерыв."})
@@ -173,7 +176,7 @@ def build_optimization_report(
         after_touch = _adjacent_transition_effect(db, after_entries, entry_id, lessons, rooms)
         explanation = _change_explanation(
             old, new, teachers.get(lesson.teacher_id),
-            rooms[old.room_id], rooms[new.room_id], before_touch, after_touch,
+            rooms[old.room_id], rooms[new.room_id], before_touch, after_touch, lesson,
         )
         changed_rooms += int(room_changed)
         changed_times += int(time_changed)
