@@ -492,6 +492,45 @@ def _optimize_entries(
             entry.room_id = old_room_id
 
 
+def unchanged_baseline_transition_exemptions(db, before, after, lessons, rooms, teacher_id):
+    """Only grandfather pre-existing impossible transitions of untouched OTHER teachers.
+
+    Never exempt a transition involving a changed assignment, the selected
+    teacher, or a newly adjacent pair.
+    """
+    if teacher_id is None:
+        return set()
+    originals = {e.id: e for e in before}
+    results = {e.id: e for e in after}
+    by_day = {}
+    for e in before:
+        lesson = lessons.get(e.lesson_id)
+        if lesson is not None and lesson.teacher_id != teacher_id:
+            by_day.setdefault((lesson.teacher_id, e.weekday), []).append(e)
+    exempt = set()
+    for key, items in by_day.items():
+        items.sort(key=lambda e: (e.start_time, e.id))
+        final_items = sorted(
+            (e for e in after if lessons.get(e.lesson_id) is not None
+             and lessons[e.lesson_id].teacher_id == key[0] and e.weekday == key[1]),
+            key=lambda e: (e.start_time, e.id),
+        )
+        final_pairs = {(a.id, b.id) for a, b in zip(final_items, final_items[1:])}
+        for a, b in zip(items, items[1:]):
+            pair = (a.id, b.id)
+            if pair not in final_pairs:
+                continue
+            if any(
+                (originals[e.id].room_id, originals[e.id].start_time, originals[e.id].end_time)
+                != (results[e.id].room_id, results[e.id].start_time, results[e.id].end_time)
+                for e in (a, b)
+            ):
+                continue
+            if _transition_minutes(db, a, b, lessons, rooms) is None:
+                exempt.add(pair)
+    return exempt
+
+
 def _preview_optimization(
     db: Session,
     week_type: str = "odd",
@@ -683,10 +722,13 @@ def _preview_optimization(
     issues = condition_issues(all_entries, lessons, rooms, teachers)
     if not issues:
         try:
-            validate_weekly_entries(db, [SimpleNamespace(**vars(entry), week_type=week_type) for entry in all_entries])
+            validate_weekly_entries(db, [SimpleNamespace(**vars(entry), week_type=week_type) for entry in all_entries],\n                exempt_transition_pairs=unchanged_baseline_transition_exemptions(\n                    db, report_before_entries, all_entries, lessons, rooms, teacher_id))
         except ValueError as exc:
             issues.append({"entry_id": None, "teacher_id": None, "reason": str(exc)})
     warnings = []
+    inherited = unchanged_baseline_transition_exemptions(db, report_before_entries, all_entries, lessons, rooms, teacher_id)
+    if inherited:
+        warnings.append(f"В расписании других преподавателей остаётся {len(inherited)} ранее существовавших невозможных переходов. Они не изменялись; их необходимо исправить отдельно.")
     if any(teacher.prefer_near_entrance for teacher in teachers.values()) and not distances:
         warnings.append("Нет маршрутов от входа: предпочтение близости сейчас не учитывается.")
 
