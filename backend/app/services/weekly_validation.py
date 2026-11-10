@@ -21,7 +21,7 @@ from app.services.lesson_times import get_lesson_pair
 from app.services.teacher_conditions import load_teacher_conditions, condition_issues
 
 
-def validate_weekly_entries(db: Session, entries, *, enforce_teacher_conditions=True) -> None:
+def validate_weekly_entries(db: Session, entries, *, enforce_teacher_conditions=True, exempt_transition_pairs=None) -> None:
     """
     Validate supplied weekly entries without writing to the database.
 
@@ -29,6 +29,7 @@ def validate_weekly_entries(db: Session, entries, *, enforce_teacher_conditions=
     Weekly workload completeness is checked separately.
     """
     entries = list(entries)
+    exempt_transition_pairs = exempt_transition_pairs or set()
     if not entries:
         return
 
@@ -188,7 +189,7 @@ def validate_weekly_entries(db: Session, entries, *, enforce_teacher_conditions=
                 - previous.end_time.hour * 60 - previous.end_time.minute
             )
 
-            if transition is None or transition["total_time"] > available:
+            if (transition is None or transition["total_time"] > available) and (previous.id, current.id) not in exempt_transition_pairs:
                 raise ValueError(
                     f"Невозможен переход между занятиями "
                     f"{previous.lesson_id} и {current.lesson_id}."
