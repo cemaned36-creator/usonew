@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.services.teacher_conditions import load_teacher_conditions, room_allowed, entrance_distances, entrance_cost
+from app.services.teacher_conditions import load_teacher_conditions, room_allowed, entrance_distances, entrance_cost, preferred_room_cost
 from app.models.lesson import Lesson
 from app.models.lesson_requirement import LessonRequirement
 from app.models.room import Room
@@ -245,7 +245,7 @@ def recommend_room(
         # Лучший вариант
         # -------------------------------------------------
 
-        rank = (entrance_cost(room.id, teacher, distances), -score)
+        rank = (preferred_room_cost(room.id, teacher, lesson), entrance_cost(room.id, teacher, distances), -score)
         if best_key is None or rank < best_key:
             best_key = rank
             best_score = score

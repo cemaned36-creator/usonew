@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, CheckConstraint
+from sqlalchemy import Column, Integer, String, Boolean, CheckConstraint, JSON
 from app.database import Base
 
 
@@ -13,6 +13,8 @@ class Teacher(Base):
     earliest_start_pair = Column(Integer, nullable=False, default=1, server_default="1")
     max_floor = Column(Integer, nullable=True)
     prefer_near_entrance = Column(Boolean, nullable=False, default=False, server_default="false")
+
+    preferred_rooms_by_type = Column(JSON, nullable=False, default=dict, server_default="{}")
 
     __table_args__ = (
         CheckConstraint("earliest_start_pair BETWEEN 1 AND 3", name="ck_teacher_start_pair"),
