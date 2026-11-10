@@ -255,6 +255,11 @@ function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
     prefer_near_entrance: teacher.prefer_near_entrance ?? false,
     preferred_rooms_by_type: teacher.preferred_rooms_by_type ?? {},
   });
+  useEffect(() => {
+    setDraft({ earliest_start_pair: teacher.earliest_start_pair ?? 1,
+      max_floor: teacher.max_floor ?? null, prefer_near_entrance: teacher.prefer_near_entrance ?? false,
+      preferred_rooms_by_type: teacher.preferred_rooms_by_type ?? {} });
+  }, [teacher.id]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
@@ -269,7 +274,22 @@ function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Не удалось сохранить условия.");
-      onSaved(draft);
+      const verifyResponse = await fetch(`${API}/teachers/`, { cache: "no-store" });
+      if (!verifyResponse.ok) throw new Error("Настройки отправлены, но не удалось проверить их сохранение в базе.");
+      const persistedTeachers: Teacher[] = await verifyResponse.json();
+      const persisted = persistedTeachers.find((item) => item.id === teacher.id);
+      if (!persisted) throw new Error("Не удалось найти преподавателя после сохранения.");
+      const expected = draft.preferred_rooms_by_type;
+      const actual = persisted.preferred_rooms_by_type ?? {};
+      const same = ["Лекция", "Практика", "Лабораторная"].every((type) =>
+        JSON.stringify([...(expected[type] ?? [])].sort((a, b) => a - b)) ===
+        JSON.stringify([...(actual[type] ?? [])].sort((a, b) => a - b))
+      );
+      if (!same) throw new Error("Сервер не подтвердил сохранение выбранных аудиторий.");
+      const confirmed = { earliest_start_pair: persisted.earliest_start_pair, max_floor: persisted.max_floor,
+        prefer_near_entrance: persisted.prefer_near_entrance, preferred_rooms_by_type: actual };
+      setDraft(confirmed);
+      onSaved(confirmed);
       setMessage(result.affected_entries
         ? `Условия сохранены. В текущем расписании ${result.affected_entries} занятий нарушают ограничения. Выполните оптимизацию обеих недель и проверьте результат.`
         : "Условия сохранены. Они будут учтены при следующем составлении и оптимизации расписания.");
@@ -334,7 +354,7 @@ function RoomPreferencePicker({ label, rooms, selected, onChange, disabled }: {
       <p role="status" className="text-xs text-slate-500">Найдено: {visible.length}</p>
       <div className="max-h-60 space-y-1 overflow-y-auto">
         {visible.map((room) => <label key={room.id} className="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-white">
-          <input type="checkbox" disabled={disabled} checked={selected.includes(room.id)} onChange={(event) => onChange(event.target.checked ? [...selected, room.id] : selected.filter((id) => id !== room.id))} className="h-4 w-4" />
+          <input type="checkbox" disabled={disabled} checked={selected.includes(room.id)} onChange={(event) => onChange(event.target.checked ? Array.from(new Set([...selected, room.id])) : selected.filter((id) => id !== room.id))} className="h-4 w-4" />
           <span><strong>{room.name}</strong><span className="block text-xs text-slate-500">{room.building} · этаж {room.floor} · мест: {room.capacity}</span></span>
         </label>)}
         {!visible.length && <p className="py-2 text-sm text-slate-500">Аудитории не найдены.</p>}
