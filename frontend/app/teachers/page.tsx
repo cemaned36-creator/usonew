@@ -320,6 +320,8 @@ function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
     </fieldset>
       <section className="mt-4 space-y-3" aria-label="Предпочтения по аудиториям">
         <h4 className="text-sm font-semibold">Предпочтительные аудитории по типу занятия</h4>
+        {!editable && <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Выбор аудиторий сейчас недоступен: профиль преподавателя не совпадает с этой карточкой. Для изменения выберите свой профиль или профиль администратора на главной странице.</p>}
+        {!rooms.length && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">Список аудиторий пуст. Проверьте подключение к API аудиторий.</p>}
         <p className="text-xs leading-5 text-slate-500">Можно выбрать несколько равнозначных вариантов. Пустой список означает любую подходящую аудиторию. Выбранные аудитории имеют приоритет перед близостью ко входу и сокращением переходов, но не отменяют требования к оборудованию, вместимости, этажу и допустимым перерывам. Если они недоступны, система подберёт другую подходящую аудиторию.</p>
         {[["Лекция", "Лекции"], ["Практика", "Практические занятия"], ["Лабораторная", "Лабораторные занятия"]].map(([type, label]) =>
           <RoomPreferencePicker key={type} label={label} rooms={rooms} disabled={!editable || saving}
@@ -346,12 +348,12 @@ function RoomPreferencePicker({ label, rooms, selected, onChange, disabled }: {
   const normalize = (value: string) => value.toLocaleLowerCase("ru").replace(/ё/g, "е").replace(/[‐‑–—−]/g, "-").replace(/\s+/g, "");
   const terms = query.trim().split(/\s+/).filter(Boolean).map(normalize);
   const visible = ordered.filter((room) => terms.every((term) => normalize(`${room.name} ${room.building}`).includes(term)));
-  return <details className="rounded-xl border border-slate-200 bg-slate-50">
-    <summary className="cursor-pointer px-4 py-3 text-sm font-medium">{label} · {selected.length ? `Выбрано: ${selected.length}` : "Любая подходящая"}</summary>
+  return <div className="rounded-xl border border-slate-200 bg-slate-50">
+    <div className="px-4 py-3 text-sm font-semibold">{label} · {selected.length ? `Выбрано: ${selected.length}` : "Любая подходящая"}</div>
     <div className="space-y-3 px-4 pb-4">
       {selected.length > 0 && <p className="text-xs text-slate-600">{rooms.filter((room) => selected.includes(room.id)).map((room) => room.name).join(", ")}</p>}
       <input type="search" aria-label={`Поиск аудитории: ${label}`} placeholder="Номер аудитории или корпус…" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-      <p role="status" className="text-xs text-slate-500">Найдено: {visible.length}</p>
+      <p role="status" className="text-xs text-slate-500">Найдено: {visible.length} · Выбрано: {selected.length}{disabled ? " · Только просмотр" : ""}</p>
       <div className="max-h-60 space-y-1 overflow-y-auto">
         {visible.map((room) => <label key={room.id} className="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-white">
           <input type="checkbox" disabled={disabled} checked={selected.includes(room.id)} onChange={(event) => onChange(event.target.checked ? Array.from(new Set([...selected, room.id])) : selected.filter((id) => id !== room.id))} className="h-4 w-4" />
@@ -361,5 +363,5 @@ function RoomPreferencePicker({ label, rooms, selected, onChange, disabled }: {
       </div>
       {selected.length > 0 && <button type="button" disabled={disabled} onClick={() => onChange([])} className="text-sm font-medium text-slate-700 underline">Снять выбор для этого типа</button>}
     </div>
-  </details>;
+  </div>;
 }
