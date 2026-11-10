@@ -16,6 +16,7 @@ from app.services.optimization import (
     _room_fits,
     _teacher_transition_total,
     preview_optimization,
+    unchanged_baseline_transition_exemptions,
 )
 from sqlalchemy import text
 
@@ -214,6 +215,8 @@ def apply_optimization(
         ]
         entries_by_id = {item.id: item for item in entries}
 
+        baseline_entries = [ScheduleItem(**vars(entry)) for entry in entries]
+
         for entry_id, change in submitted.items():
             entry = entries_by_id[entry_id]
             if entry.room_id != change.old_room_id:
@@ -292,18 +295,9 @@ def apply_optimization(
                     ),
                 )
 
-        transition_total = _teacher_transition_total(
-            entries, lessons, rooms, db
+        exempt_pairs = unchanged_baseline_transition_exemptions(
+            db, baseline_entries, entries, lessons, rooms, payload.teacher_id
         )
-        if transition_total is None:
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "В итоговом расписании есть невозможный переход "
-                    "или недостаточно времени. Изменения не сохранены."
-                ),
-            )
-
 
         # Validate the complete proposed week before modifying ORM objects.
         validation_entries = [
@@ -320,7 +314,7 @@ def apply_optimization(
         ]
 
         try:
-            validate_weekly_entries(db, validation_entries)
+            validate_weekly_entries(db, validation_entries, exempt_transition_pairs=exempt_pairs)
         except ValueError as exc:
             raise HTTPException(
                 status_code=409,
