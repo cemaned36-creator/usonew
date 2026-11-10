@@ -15,6 +15,8 @@ def get_rooms(db: Session = Depends(get_db)):
         {
             "id": room.id,
             "name": room.name,
+            "building": room.building,
+            "floor": room.floor,
             "room_type": room.room_type,
             "access_type": room.access_type,
             "capacity": room.capacity,
