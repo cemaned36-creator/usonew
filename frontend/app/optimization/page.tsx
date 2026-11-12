@@ -92,6 +92,10 @@ type OptimizationResult = {
   changes: Change[];
   changes_count: number;
   room_swaps_count?: number;
+  changes_before_swaps?: number;
+  reverted_by_swaps?: number;
+  added_by_swaps?: number;
+  transition_time_before_swaps?: number | null;
   transition_time_before: number | null;
   transition_time_after: number | null;
   time_saved: number | null;
@@ -626,6 +630,13 @@ export default function OptimizationPage() {
                         {result.teacher_id === null && (
                           <span className="rounded-lg bg-sky-50 px-3 py-2 text-sky-800" title="Одновременная перестановка аудиторий между двумя преподавателями">
                             Взаимных обменов аудиториями: <strong>{result.room_swaps_count ?? 0}</strong>
+                          </span>
+                        )}
+                        {result.teacher_id === null && result.changes_before_swaps !== undefined && (
+                          <span className="rounded-lg bg-slate-100 px-3 py-2 text-slate-700" title="Позволяет сравнить подбор свободных аудиторий с дополнительным этапом взаимных обменов">
+                            До обменов: <strong>{result.changes_before_swaps}</strong>
+                            {" · "}Возвращено: <strong>{result.reverted_by_swaps ?? 0}</strong>
+                            {" · "}Добавлено: <strong>{result.added_by_swaps ?? 0}</strong>
                           </span>
                         )}
                         <span className={`rounded-lg px-3 py-2 ${result.unknown_routes.length ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
