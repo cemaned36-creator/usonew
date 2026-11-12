@@ -403,6 +403,152 @@ def _repair_infeasible_transitions(
                 break
 
 
+def _optimize_occupied_room_swaps(
+    db, entries, rooms, lessons, requirements, participants, teacher_id=None,
+):
+    """Swap occupied rooms atomically between simultaneous lessons of two teachers.
+
+    Only full-week optimization may touch both teachers. Each trial changes
+    both copies at once; the preview and apply validators remain authoritative.
+    """
+    if teacher_id is not None:
+        return []
+
+    teachers = load_teacher_conditions(db)
+    distances = entrance_distances(db)
+    room_profiles, lesson_profiles = load_equipment_profiles(db)
+    by_slot = {}
+    by_teacher_day = {}
+    for entry in entries:
+        lesson = lessons.get(entry.lesson_id)
+        room = rooms.get(entry.room_id)
+        if lesson is None or room is None:
+            continue
+        by_teacher_day.setdefault((lesson.teacher_id, entry.weekday), []).append(entry)
+        if room_in_active_scope(room) and not _is_sports_entry(entry, rooms, requirements):
+            key = (entry.weekday, entry.start_time, entry.end_time)
+            by_slot.setdefault(key, []).append(entry)
+
+    swaps = []
+    # A strict improvement is required on every exchange, so reversals cannot
+    # cycle; cap the number of accepted moves for predictable preview time.
+    max_swaps = len(entries)
+    while len(swaps) < max_swaps:
+        accepted = False
+        for slot in sorted(by_slot):
+            candidates = sorted(by_slot[slot], key=lambda item: item.id)
+            for index, first in enumerate(candidates):
+                first_lesson = lessons[first.lesson_id]
+                first_teacher = teachers.get(first_lesson.teacher_id)
+                for second in candidates[index + 1:]:
+                    second_lesson = lessons[second.lesson_id]
+                    if first_lesson.teacher_id == second_lesson.teacher_id:
+                        continue
+                    if first.room_id == second.room_id:
+                        continue
+                    if participants_overlap(
+                        participants[first.lesson_id], participants[second.lesson_id]
+                    ):
+                        continue
+
+                    second_teacher = teachers.get(second_lesson.teacher_id)
+                    first_room = rooms[first.room_id]
+                    second_room = rooms[second.room_id]
+                    first_req = requirements.get(first.lesson_id)
+                    second_req = requirements.get(second.lesson_id)
+
+                    if not (
+                        time_allowed(first.start_time, first_teacher)
+                        and time_allowed(second.start_time, second_teacher)
+                        and _room_fits(
+                            second_room, first_req,
+                            get_lesson_students_count(participants[first.lesson_id]),
+                        )
+                        and _room_fits(
+                            first_room, second_req,
+                            get_lesson_students_count(participants[second.lesson_id]),
+                        )
+                        and room_allowed(second_room, first_teacher)
+                        and room_allowed(first_room, second_teacher)
+                        and room_has_required_profiles(
+                            second_room.id, first.lesson_id, room_profiles, lesson_profiles
+                        )
+                        and room_has_required_profiles(
+                            first_room.id, second.lesson_id, room_profiles, lesson_profiles
+                        )
+                    ):
+                        continue
+
+                    affected = (
+                        by_teacher_day[(first_lesson.teacher_id, first.weekday)]
+                        + by_teacher_day[(second_lesson.teacher_id, second.weekday)]
+                    )
+
+                    def score():
+                        transitions = _teacher_transition_total(
+                            affected, lessons, rooms, db
+                        )
+                        if transitions is None:
+                            return None
+                        return (
+                            preferred_room_cost(
+                                first.room_id, first_teacher, first_lesson
+                            ) + preferred_room_cost(
+                                second.room_id, second_teacher, second_lesson
+                            ),
+                            entrance_cost(first.room_id, first_teacher, distances)
+                            + entrance_cost(second.room_id, second_teacher, distances),
+                            transitions,
+                        )
+
+                    before = score()
+                    if before is None:
+                        continue
+
+                    first.room_id, second.room_id = second.room_id, first.room_id
+                    valid = (
+                        not _has_schedule_conflict(
+                            rooms[first.room_id], first, entries, lessons, participants
+                        )
+                        and not _has_schedule_conflict(
+                            rooms[second.room_id], second, entries, lessons, participants
+                        )
+                        and _check_teacher_transitions(
+                            db, entries, first, lessons, rooms
+                        )
+                        and _check_teacher_transitions(
+                            db, entries, second, lessons, rooms
+                        )
+                    )
+                    after = score() if valid else None
+                    if after is not None and after < before:
+                        swaps.append({
+                            "first_entry_id": first.id,
+                            "second_entry_id": second.id,
+                            "first_lesson_id": first.lesson_id,
+                            "second_lesson_id": second.lesson_id,
+                            "first_teacher_id": first_lesson.teacher_id,
+                            "second_teacher_id": second_lesson.teacher_id,
+                            "weekday": first.weekday,
+                            "start_time": first.start_time.strftime("%H:%M"),
+                            "end_time": first.end_time.strftime("%H:%M"),
+                            "first_old_room_id": first_room.id,
+                            "second_old_room_id": second_room.id,
+                        })
+                        accepted = True
+                        break
+
+                    # Reject the trial: no ORM rows were changed.
+                    first.room_id, second.room_id = second.room_id, first.room_id
+                if accepted:
+                    break
+            if accepted:
+                break
+        if not accepted:
+            break
+    return swaps
+
+
 def _optimize_entries(
     db, entries, rooms_list, rooms, lessons, requirements, participants,
     teacher_id: int | None = None,
@@ -655,6 +801,17 @@ def _preview_optimization(
         teacher_id=teacher_id,
     )
 
+    # Cross-teacher occupied-room exchanges are allowed only for full-week runs.
+    room_swaps = _optimize_occupied_room_swaps(
+        db=db,
+        entries=all_entries,
+        rooms=rooms,
+        lessons=lessons,
+        requirements=requirements,
+        participants=participants,
+        teacher_id=teacher_id,
+    )
+
     # 3. Пересчитываем unknown_routes по итоговому расписанию.
     unknown_routes = []
     by_teacher_day = {}
@@ -781,6 +938,8 @@ def _preview_optimization(
         "can_apply": not issues and not unknown_routes,
         "changes": changes,
         "changes_count": len(changes),
+        "room_swaps_count": len(room_swaps),
+        "room_swaps": room_swaps,
         "transition_time_before": before_total,
         "transition_time_after": after_total,
         "time_saved": time_saved,
