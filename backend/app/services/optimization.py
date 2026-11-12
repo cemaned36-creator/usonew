@@ -521,7 +521,16 @@ def _optimize_occupied_room_swaps(
                         )
                     )
                     after = score() if valid else None
-                    if after is not None and after < before:
+                    # A preference gain must never make teachers travel longer.
+                    # The exchange must improve at least one objective without
+                    # worsening preferences, entrance costs, or transitions.
+                    if (
+                        after is not None
+                        and after[0] <= before[0]
+                        and after[1] <= before[1]
+                        and after[2] <= before[2]
+                        and after != before
+                    ):
                         swaps.append({
                             "first_entry_id": first.id,
                             "second_entry_id": second.id,
@@ -801,6 +810,20 @@ def _preview_optimization(
         teacher_id=teacher_id,
     )
 
+    # Preserve the pre-swap proposal so the UI can distinguish added exchanges
+    # from previously planned changes that a swap has cancelled.
+    proposed_before_swaps = {
+        item.id: (item.room_id, item.start_time, item.end_time)
+        for item in all_entries
+    }
+    changes_before_swaps = sum(
+        original != proposed_before_swaps[entry_id]
+        for entry_id, original in originals.items()
+    )
+    transitions_before_swaps = _teacher_transition_total(
+        entries, lessons, rooms, db, require_feasible=False
+    )
+
     # Cross-teacher occupied-room exchanges are allowed only for full-week runs.
     room_swaps = _optimize_occupied_room_swaps(
         db=db,
@@ -810,6 +833,19 @@ def _preview_optimization(
         requirements=requirements,
         participants=participants,
         teacher_id=teacher_id,
+    )
+
+    reverted_by_swaps = sum(
+        original != proposed_before_swaps[entry_id]
+        and (item.room_id, item.start_time, item.end_time) == original
+        for item in all_entries
+        for entry_id, original in [(item.id, originals[item.id])]
+    )
+    added_by_swaps = sum(
+        original == proposed_before_swaps[entry_id]
+        and (item.room_id, item.start_time, item.end_time) != original
+        for item in all_entries
+        for entry_id, original in [(item.id, originals[item.id])]
     )
 
     # 3. Пересчитываем unknown_routes по итоговому расписанию.
@@ -938,6 +974,10 @@ def _preview_optimization(
         "can_apply": not issues and not unknown_routes,
         "changes": changes,
         "changes_count": len(changes),
+        "changes_before_swaps": changes_before_swaps,
+        "reverted_by_swaps": reverted_by_swaps,
+        "added_by_swaps": added_by_swaps,
+        "transition_time_before_swaps": transitions_before_swaps,
         "room_swaps_count": len(room_swaps),
         "room_swaps": room_swaps,
         "transition_time_before": before_total,
