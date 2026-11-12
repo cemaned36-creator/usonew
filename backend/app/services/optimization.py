@@ -23,7 +23,7 @@ from app.services.teacher_conditions import (
     load_teacher_conditions, room_allowed, time_allowed, condition_issues,
     entrance_distances, entrance_cost, preferred_room_cost,
 )
-from app.services.lesson_times import LESSON_PAIRS
+from app.services.lesson_times import LESSON_PAIRS, spans_long_break
 from app.services.weekly_validation import validate_weekly_entries
 from types import SimpleNamespace
 
@@ -187,6 +187,10 @@ def _teacher_transition_total(entries, lessons, rooms, db, *, require_feasible=T
         for previous, current in zip(
             teacher_entries, teacher_entries[1:]
         ):
+            if spans_long_break(previous, current):
+                if require_feasible and _transition_minutes(db, previous, current, lessons, rooms) is None:
+                    return None
+                continue
             calculate = _transition_minutes if require_feasible else _required_transition_minutes
             value = calculate(db, previous, current, lessons, rooms)
 
@@ -329,7 +333,7 @@ def _repair_infeasible_transitions(
                 value = _transition_minutes(db, previous, current, lessons, rooms)
                 if value is None:
                     bad.add((previous.id, current.id))
-                else:
+                elif not spans_long_break(previous, current):
                     total += value
             return bad, total
 

@@ -79,3 +79,40 @@ def test_unknown_after_preserves_known_before_and_exact_break_is_valid():
     assert result['summary']['transition_time_before'] == 0
     assert result['summary']['transition_time_after'] is None
     assert result['summary']['time_saved'] is None
+
+
+
+def test_long_break_cost_excluded_without_disabling_feasibility():
+    entries, lessons, rooms = setup_entries()
+    entries[0].start_time, entries[0].end_time = time(12), time(13,35)
+    entries[1].start_time, entries[1].end_time = time(14,30), time(16,5)
+    db = NS(info={'_optimization_transition_checker': lambda a,b: 13})
+    assert _required_transition_minutes(db, *entries, lessons, rooms) == 13
+    assert _transition_minutes(db, *entries, lessons, rooms) == 13
+    assert _teacher_transition_total(entries, lessons, rooms, db) == 0
+    assert _teacher_transition_total(entries, lessons, rooms, db, require_feasible=False) == 0
+    stats = _link_stats(db, [tuple(entries)], lessons, rooms)
+    assert stats['minutes'] == 0 and stats['transition_count'] == 0
+    assert report(db, entries, entries, lessons, rooms)['summary']['long_break_excluded']
+    for value in [None, 56]:
+        db.info['_optimization_transition_checker'] = lambda a,b: value
+        assert _transition_minutes(db, *entries, lessons, rooms) is None
+        assert _teacher_transition_total(entries, lessons, rooms, db) is None
+        assert _teacher_transition_total(entries, lessons, rooms, db, require_feasible=False) == 0
+
+
+def test_only_full_long_break_is_excluded():
+    from app.services.lesson_times import spans_long_break
+    entries, lessons, rooms = setup_entries()
+    assert not spans_long_break(*entries)
+    entries[0].end_time = time(13,36)
+    entries[1].start_time = time(14,30)
+    assert not spans_long_break(*entries)
+    entries[0].end_time = time(13,35)
+    entries[1].start_time = time(14,29)
+    assert not spans_long_break(*entries)
+    entries[0].end_time = time(11,50)
+    entries[1].start_time = time(16,15)
+    assert spans_long_break(*entries)
+    entries[1].weekday = 1
+    assert not spans_long_break(*entries)

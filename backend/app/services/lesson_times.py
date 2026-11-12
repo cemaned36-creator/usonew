@@ -18,3 +18,10 @@ def get_lesson_pair(start_time: time, end_time: time):
             return number
 
     return None
+
+
+def spans_long_break(previous, current):
+    """Exclude the 13:35–14:30 break from cost, never from feasibility checks."""
+    return (previous.weekday == current.weekday
+            and previous.end_time <= LESSON_PAIRS[2][2]
+            and current.start_time >= LESSON_PAIRS[3][1])
