@@ -102,6 +102,8 @@ def render_optimization_pdf(report, *, week_type, teacher_id=None, teacher_name=
             line('Проверка плана на момент расчёта: ' + ('пройдена.' if can_apply else 'план нельзя применить. См. предупреждения.'))
     line('Время переходов включает получение и возврат ключей. Спорткомплекс исключён из оптимизации переходов.')
     summary = report.get('summary', {})
+    if summary.get('long_break_excluded'):
+        line('Переходы через большой перерыв 13:35–14:30 не включены в суммы. Допустимость маршрутов проверяется отдельно.')
     section('Общий результат')
     table(['Показатель', 'До', 'После'], [
         ['Время переходов', minutes(summary.get('transition_time_before')), minutes(summary.get('transition_time_after'))],

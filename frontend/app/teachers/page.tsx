@@ -18,7 +18,7 @@ import {
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
-type Room = { id: number; name: string; building: string; floor: number; capacity: number };
+type Room = { id: number; name: string; building: string; floor: number; capacity: number; room_type: string };
 type Conditions = { earliest_start_pair: number; max_floor: number | null; prefer_near_entrance: boolean; preferred_rooms_by_type: Record<string, number[]> };
 type Teacher = Conditions & { id: number; name: string; email?: string | null };
 type Lesson = { id: number; teacher_id: number; subject_id: number; group_id: number };
@@ -324,7 +324,7 @@ function TeacherConditionsForm({ teacher, rooms, editable, onSaved }: {
         {!rooms.length && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">Список аудиторий пуст. Проверьте подключение к API аудиторий.</p>}
         <p className="text-xs leading-5 text-slate-500">Можно выбрать несколько равнозначных вариантов. Пустой список означает любую подходящую аудиторию. Выбранные аудитории имеют приоритет перед близостью ко входу и сокращением переходов, но не отменяют требования к оборудованию, вместимости, этажу и допустимым перерывам. Если они недоступны, система подберёт другую подходящую аудиторию.</p>
         {[["Лекция", "Лекции"], ["Практика", "Практические занятия"], ["Лабораторная", "Лабораторные занятия"]].map(([type, label]) =>
-          <RoomPreferencePicker key={type} label={label} rooms={rooms} disabled={!editable || saving}
+          <RoomPreferencePicker key={type} label={label} rooms={rooms.filter((room) => ({ "Лекция": ["lecture_hall"], "Практика": ["classroom", "computer_lab"], "Лабораторная": ["laboratory", "computer_lab"] }[type] ?? []).includes(room.room_type))} disabled={!editable || saving}
             selected={draft.preferred_rooms_by_type[type] ?? []}
             onChange={(ids) => setDraft((value) => ({ ...value, preferred_rooms_by_type: { ...value.preferred_rooms_by_type, [type]: ids } }))} />
         )}
@@ -344,13 +344,18 @@ function RoomPreferencePicker({ label, rooms, selected, onChange, disabled }: {
   label: string; rooms: Room[]; selected: number[]; disabled: boolean; onChange: (ids: number[]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const ordered = [...rooms].sort((a, b) => Number(selected.includes(b.id)) - Number(selected.includes(a.id)) || a.name.localeCompare(b.name, "ru", { numeric: true }));
   const normalize = (value: string) => value.toLocaleLowerCase("ru").replace(/ё/g, "е").replace(/[‐‑–—−]/g, "-").replace(/\s+/g, "");
   const terms = query.trim().split(/\s+/).filter(Boolean).map(normalize);
   const visible = ordered.filter((room) => terms.every((term) => normalize(`${room.name} ${room.building}`).includes(term)));
   return <div className="rounded-xl border border-slate-200 bg-slate-50">
-    <div className="px-4 py-3 text-sm font-semibold">{label} · {selected.length ? `Выбрано: ${selected.length}` : "Любая подходящая"}</div>
-    <div className="space-y-3 px-4 pb-4">
+    <button type="button" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold">
+      <span>{label} · {selected.length ? `Выбрано: ${selected.length}` : "Любая подходящая"}</span>
+      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
+    </button>
+    <div hidden={!expanded} className="space-y-3 px-4 pb-4">
+      {selected.some((id) => !rooms.some((room) => room.id === id)) && <p className="text-xs text-amber-700">Среди сохранённых предпочтений есть аудитории другого типа. Снимите выбор и укажите подходящие аудитории.</p>}
       {selected.length > 0 && <p className="text-xs text-slate-600">{rooms.filter((room) => selected.includes(room.id)).map((room) => room.name).join(", ")}</p>}
       <input type="search" aria-label={`Поиск аудитории: ${label}`} placeholder="Номер аудитории или корпус…" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
       <p role="status" className="text-xs text-slate-500">Найдено: {visible.length} · Выбрано: {selected.length}{disabled ? " · Только просмотр" : ""}</p>

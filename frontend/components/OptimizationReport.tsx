@@ -89,6 +89,7 @@ type GroupWeekQuality = {
 export type OptimizationDetailedReport = {
   version: number;
   summary: {
+    long_break_excluded?: boolean;
     changed_entries: number;
     room_changes: number;
     time_changes: number;
@@ -210,6 +211,7 @@ export default function OptimizationReport({ report, historical = false }: { rep
             <SummaryMetric label="Переходы после" value={metric(report.summary.transition_time_after)} />
             <SummaryMetric label="Изменение времени" value={savings(report.summary.time_saved)} />
           </div>
+          {report.summary.long_break_excluded && <p className="text-xs text-slate-500">Переходы через большой перерыв 13:35–14:30 не включены в суммы. Допустимость маршрутов проверяется отдельно.</p>}
           {!report.summary.transition_metrics_complete && (
             <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
               В одной из версий расписания есть переходы с неизвестным временем. Полная сумма для этой версии и экономия не рассчитаны. Доступный показатель другой версии сохранён.
@@ -351,7 +353,7 @@ export default function OptimizationReport({ report, historical = false }: { rep
 
       {tab === "changes" && (
         <div className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid items-start gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <div className="relative min-w-0">
               <label htmlFor={teacherOptionsId} className="sr-only">Поиск преподавателя</label>
               <input id={teacherOptionsId} type="text" value={teacherSearch}
@@ -360,7 +362,7 @@ export default function OptimizationReport({ report, historical = false }: { rep
                 onBlur={() => { setTimeout(() => setShowTeacherSuggestions(false), 150); }}
                 onKeyDown={event => { if (event.key === "Escape") setShowTeacherSuggestions(false); }}
                 placeholder="Поиск преподавателя..." autoComplete="off"
-                className="block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10" />
+                className="block h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10" />
               {showTeacherSuggestions && teacherSearch.trim() !== "" && (
                 <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                   {filteredTeachers.length > 0 ? filteredTeachers.map(teacher => (
@@ -382,18 +384,18 @@ export default function OptimizationReport({ report, historical = false }: { rep
                 className="mt-2 text-xs text-blue-600 hover:text-blue-800">Показать всех преподавателей</button>}
             </div>
             <select aria-label="Фильтр по группе" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}
-              className="min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
+              className="h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
               <option value="">Все группы</option>
               {report.groups.map(item => <option key={item.group_id} value={item.group_id}>{item.group_name ?? item.group_id}</option>)}
             </select>
             <select aria-label="Фильтр по типу" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-              className="rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
+              className="h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
               <option value="all">Все изменения</option>
               <option value="room">Изменение аудитории</option>
               <option value="time">Изменение времени</option>
             </select>
             <select aria-label="Фильтр по дню" value={dayFilter} onChange={e => setDayFilter(e.target.value)}
-              className="rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
+              className="h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-2.5 text-sm">
               <option value="all">Все дни</option>
               {DAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
             </select>

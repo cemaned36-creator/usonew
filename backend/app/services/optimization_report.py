@@ -5,6 +5,7 @@ never silently turn into zero. One schedule entry is counted once even when
 several student groups attend the same lesson.
 """
 from collections import defaultdict
+from app.services.lesson_times import spans_long_break
 
 from app.services.optimization import _required_transition_minutes, _is_sports_entry, _minutes
 from app.services.room_scope import room_in_active_scope
@@ -17,6 +18,7 @@ def _time(value):
 
 
 def _link_stats(db, links, lessons, rooms):
+    links = [(a, b) for a, b in links if not spans_long_break(a, b)]
     known = unknown = insufficient = 0
     problems = []
     for previous, current in links:
@@ -296,6 +298,7 @@ def build_optimization_report(
         "teacher_id": selected_teacher_id,
         "scope": "active_rooms_excluding_sports",
         "summary": {
+            "long_break_excluded": True,
             "changed_entries": len(changes),
             "room_changes": changed_rooms,
             "time_changes": changed_times,
