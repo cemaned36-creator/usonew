@@ -91,6 +91,7 @@ type OptimizationResult = {
   warnings: string[];
   changes: Change[];
   changes_count: number;
+  room_swaps_count?: number;
   transition_time_before: number | null;
   transition_time_after: number | null;
   time_saved: number | null;
@@ -622,6 +623,11 @@ export default function OptimizationPage() {
                       <p className="mt-3 text-xs text-slate-500">Переходы через большой перерыв 13:35–14:30 не учитываются в суммах времени.</p>
                       <div className="mt-4 flex flex-wrap gap-3 text-sm">
                         <span className="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Изменений: <strong>{result.changes_count}</strong></span>
+                        {result.teacher_id === null && (
+                          <span className="rounded-lg bg-sky-50 px-3 py-2 text-sky-800" title="Одновременная перестановка аудиторий между двумя преподавателями">
+                            Взаимных обменов аудиториями: <strong>{result.room_swaps_count ?? 0}</strong>
+                          </span>
+                        )}
                         <span className={`rounded-lg px-3 py-2 ${result.unknown_routes.length ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
                           Предупреждений о переходах: <strong>{result.unknown_routes.length}</strong>
                         </span>
