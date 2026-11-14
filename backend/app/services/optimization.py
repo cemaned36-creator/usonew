@@ -160,11 +160,13 @@ def _transition_minutes(db, previous, current, lessons, rooms):
 
     return required
 
-def _teacher_transition_total(entries, lessons, rooms, db, *, require_feasible=True):
+def _teacher_transition_total(entries, lessons, rooms, db, *, require_feasible=True, exclude_long_break=False):
     """Суммирует время переходов между занятиями преподавателей.
 
     По умолчанию требует допустимости всех переходов. Для аналитики
     require_feasible=False сохраняет известное время при коротком перерыве.
+    Оптимизация учитывает все переходы. Только отображаемые суммы вызывают
+    эту функцию с exclude_long_break=True.
     """
 
     by_teacher_day = {}
@@ -187,7 +189,7 @@ def _teacher_transition_total(entries, lessons, rooms, db, *, require_feasible=T
         for previous, current in zip(
             teacher_entries, teacher_entries[1:]
         ):
-            if spans_long_break(previous, current):
+            if exclude_long_break and spans_long_break(previous, current):
                 if require_feasible and _transition_minutes(db, previous, current, lessons, rooms) is None:
                     return None
                 continue
@@ -333,7 +335,7 @@ def _repair_infeasible_transitions(
                 value = _transition_minutes(db, previous, current, lessons, rooms)
                 if value is None:
                     bad.add((previous.id, current.id))
-                elif not spans_long_break(previous, current):
+                else:
                     total += value
             return bad, total
 
@@ -785,7 +787,7 @@ def _preview_optimization(
 
     # 1. Рассчитываем время переходов до оптимизации.
     before_total = _teacher_transition_total(
-        original_entries, lessons, rooms, db, require_feasible=False
+        original_entries, lessons, rooms, db, require_feasible=False, exclude_long_break=True
     )
 
     teachers = load_teacher_conditions(db)
@@ -821,7 +823,7 @@ def _preview_optimization(
         for entry_id, original in originals.items()
     )
     transitions_before_swaps = _teacher_transition_total(
-        entries, lessons, rooms, db, require_feasible=False
+        entries, lessons, rooms, db, require_feasible=False, exclude_long_break=True
     )
 
     # Cross-teacher occupied-room exchanges are allowed only for full-week runs.
@@ -907,7 +909,7 @@ def _preview_optimization(
 
     # 5. Рассчитываем время переходов после оптимизации.
     after_total = _teacher_transition_total(
-        entries, lessons, rooms, db, require_feasible=False
+        entries, lessons, rooms, db, require_feasible=False, exclude_long_break=True
     )
 
     time_saved = (
