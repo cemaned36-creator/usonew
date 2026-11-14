@@ -89,8 +89,8 @@ def test_long_break_cost_excluded_without_disabling_feasibility():
     db = NS(info={'_optimization_transition_checker': lambda a,b: 13})
     assert _required_transition_minutes(db, *entries, lessons, rooms) == 13
     assert _transition_minutes(db, *entries, lessons, rooms) == 13
-    assert _teacher_transition_total(entries, lessons, rooms, db) == 0
-    assert _teacher_transition_total(entries, lessons, rooms, db, require_feasible=False) == 0
+    assert _teacher_transition_total(entries, lessons, rooms, db) == 13
+    assert _teacher_transition_total(entries, lessons, rooms, db, require_feasible=False, exclude_long_break=True) == 0
     stats = _link_stats(db, [tuple(entries)], lessons, rooms)
     assert stats['minutes'] == 0 and stats['transition_count'] == 0
     assert report(db, entries, entries, lessons, rooms)['summary']['long_break_excluded']
@@ -98,7 +98,7 @@ def test_long_break_cost_excluded_without_disabling_feasibility():
         db.info['_optimization_transition_checker'] = lambda a,b: value
         assert _transition_minutes(db, *entries, lessons, rooms) is None
         assert _teacher_transition_total(entries, lessons, rooms, db) is None
-        assert _teacher_transition_total(entries, lessons, rooms, db, require_feasible=False) == 0
+        assert _teacher_transition_total(entries, lessons, rooms, db, require_feasible=False, exclude_long_break=True) == 0
 
 
 def test_only_full_long_break_is_excluded():

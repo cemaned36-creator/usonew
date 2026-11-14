@@ -64,6 +64,25 @@ class TransitionRepairTest(unittest.TestCase):
         self.assertEqual(len(preview['changes']),1)
         self.assertEqual(preview['changes'][0]['new_room_id'],2)
 
+    def test_lunch_transition_optimized_but_excluded_from_report_and_apply(self):
+        self.db.delete(self.db.get(WeeklyScheduleEntry, 4))
+        for entry in self.db.query(WeeklyScheduleEntry).filter_by(week_type='odd'):
+            if entry.start_time == time(8, 30):
+                entry.start_time, entry.end_time = time(12), time(13, 35)
+            else:
+                entry.start_time, entry.end_time = time(14, 30), time(16, 5)
+        self.db.commit()
+        preview = preview_optimization(self.db, 'odd', 1)
+        self.assertTrue(preview['can_apply'])
+        self.assertEqual([(c['entry_id'], c['new_room_id']) for c in preview['changes']], [(1, 2)])
+        for metrics in [preview, preview['detailed_report']['summary']]:
+            self.assertEqual(metrics['transition_time_before'], 0)
+            self.assertEqual(metrics['transition_time_after'], 0)
+            self.assertEqual(metrics['time_saved'], 0)
+        apply_optimization(self.payload(preview), self.db)
+        self.assertEqual(self.db.get(WeeklyScheduleEntry, 1).room_id, 2)
+        validate_weekly_entries(self.db, self.db.query(WeeklyScheduleEntry).filter_by(week_type='odd').all())
+
     def test_impossible_repair_remains_blocked(self):
         self.db.get(Room,3).capacity=1;self.db.commit()
         preview=preview_optimization(self.db,'odd',1)
