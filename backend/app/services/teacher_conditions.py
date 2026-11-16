@@ -1,4 +1,5 @@
 """Shared hard constraints and entrance preference for scheduling services."""
+from app.services.calculation_cache import cached_calculation, calculation_rows
 import heapq
 from collections import defaultdict
 from app.models.teacher import Teacher
@@ -7,8 +8,9 @@ from app.services.lesson_times import LESSON_PAIRS
 from app.services.key_desks import main_key_desk_id
 
 
+@cached_calculation
 def load_teacher_conditions(db):
-    return {teacher.id: teacher for teacher in db.query(Teacher).all()}
+    return {teacher.id: teacher for teacher in calculation_rows(db, Teacher)}
 
 
 def room_allowed(room, teacher):
@@ -34,6 +36,7 @@ def condition_issues(entries, lessons, rooms, teachers):
     return issues
 
 
+@cached_calculation
 def entrance_distances(db):
     """Walking minutes from the entrance, including the cost of stair detours.
 
@@ -44,7 +47,7 @@ def entrance_distances(db):
     if desk_id is None:
         return {}
     graph = defaultdict(list)
-    for edge in db.query(RoomConnection).all():
+    for edge in calculation_rows(db, RoomConnection):
         source = ("R", edge.from_room_id) if edge.from_room_id is not None else ("A", edge.from_access_point_id)
         target = ("R", edge.to_room_id) if edge.to_room_id is not None else ("A", edge.to_access_point_id)
         if source[1] is not None and target[1] is not None and edge.travel_time is not None and edge.travel_time >= 0:
