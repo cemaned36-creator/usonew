@@ -409,10 +409,10 @@ export default function OptimizationPage() {
                                 <DoorOpen className="h-3.5 w-3.5" />
                                 Аудитория {roomName ?? roomById.get(entry.room_id)?.name ?? "—"}
                               </span>
-                              {highlighted && change && (
-                                <span className={`text-[11px] font-medium ${optimized ? "text-emerald-700" : "text-amber-800"}`}>
+                              {optimized && highlighted && change && (
+                                <span className="text-[11px] font-medium text-emerald-700">
                                   <ArrowRight className="mr-1 inline h-3 w-3" />
-                                  {!optimized && "Будет изменено: "}{change.old_room_name} → {change.new_room_name}{change.old_start_time !== change.new_start_time && ` · ${change.old_start_time} → ${change.new_start_time}`}
+                                  {change.old_room_name} → {change.new_room_name}{change.old_start_time !== change.new_start_time && ` · ${change.old_start_time} → ${change.new_start_time}`}
                                 </span>
                               )}
                             </div>
