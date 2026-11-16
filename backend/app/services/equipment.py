@@ -1,3 +1,4 @@
+from app.services.calculation_cache import cached_calculation, calculation_rows
 from sqlalchemy.orm import Session
 
 from app.models.equipment_profile import (
@@ -6,6 +7,7 @@ from app.models.equipment_profile import (
 )
 
 
+@cached_calculation
 def load_equipment_profiles(db: Session):
     """Load room capabilities and lesson requirements in two queries."""
     room_profiles = {}

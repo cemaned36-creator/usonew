@@ -1,10 +1,12 @@
 """Resolve the current building's key desk before and after its rename."""
+from app.services.calculation_cache import cached_calculation, calculation_rows
 from app.models.access_point import AccessPoint
 from app.services.room_scope import ACTIVE_ROOM_BUILDINGS
 
 MAIN_DESK_NAMES = ("Охрана Главного корпуса", "Охрана корпуса Б")
 
 
+@cached_calculation
 def main_key_desk_id(db):
     desks = db.query(AccessPoint).filter(
         AccessPoint.name.in_(MAIN_DESK_NAMES),

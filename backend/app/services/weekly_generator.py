@@ -1,3 +1,4 @@
+from app.services.calculation_cache import calculation_rows
 import heapq
 import random
 from collections import Counter, defaultdict
@@ -39,7 +40,7 @@ def build_transition_checker(db, rooms):
     """Load routes once. Search must not repeatedly query the database."""
     graph = defaultdict(list)
 
-    for edge in db.query(RoomConnection).all():
+    for edge in calculation_rows(db, RoomConnection):
         source = (
             ("R", edge.from_room_id)
             if edge.from_room_id is not None

@@ -1,3 +1,4 @@
+from app.services.calculation_cache import calculation_cache, calculation_value, calculation_rows
 from dataclasses import dataclass
 from datetime import time
 
@@ -81,6 +82,18 @@ def _room_fits(room, requirement, students_count: int) -> bool:
         return False
 
     return True
+
+def _suitable_rooms(db, lesson, rooms_list, requirement, participants, teacher,
+                    room_profiles, lesson_profiles):
+    """Cache static suitability only; occupancy/time/order remain live checks."""
+    def load():
+        students = get_lesson_students_count(participants[lesson.id])
+        return tuple(room for room in rooms_list
+                     if _room_fits(room, requirement, students)
+                     and room_allowed(room, teacher)
+                     and room_has_required_profiles(room.id, lesson.id, room_profiles, lesson_profiles))
+    return calculation_value(db, ('suitable_rooms', lesson.id), load)
+
 
 def _has_schedule_conflict(
     candidate, entry, entries, lessons, participants
@@ -274,13 +287,11 @@ def _repair_teacher_conditions(db, entries, rooms_list, rooms, lessons, requirem
         if room_allowed(rooms[entry.room_id], teacher) and time_allowed(entry.start_time, teacher):
             continue
         requirement = requirements.get(lesson.id)
-        students = get_lesson_students_count(participants[lesson.id])
         if requirement and requirement.room_type == "gym":
             candidates = [rooms[entry.room_id]]
         else:
-            candidates = [room for room in rooms_list
-                          if _room_fits(room, requirement, students)
-                          and room_has_required_profiles(room.id, lesson.id, room_profiles, lesson_profiles)]
+            candidates = list(_suitable_rooms(db, lesson, rooms_list, requirement,
+                                              participants, teacher, room_profiles, lesson_profiles))
         candidates = [room for room in candidates if room_allowed(room, teacher)]
         candidates.sort(key=lambda room: (preferred_room_cost(room.id, teacher, lesson), entrance_cost(room.id, teacher, distances), room.id != entry.room_id, room.id))
         old = (entry.room_id, entry.start_time, entry.end_time)
@@ -345,12 +356,9 @@ def _repair_infeasible_transitions(
                     or not room_in_active_scope(rooms.get(entry.room_id))
                     or not time_allowed(entry.start_time, teacher)):
                 return []
-            students = get_lesson_students_count(participants[lesson.id])
-            return [room for room in rooms_list
+            return [room for room in _suitable_rooms(db, lesson, rooms_list, requirements.get(lesson.id),
+                                                    participants, teacher, room_profiles, lesson_profiles)
                     if room.id != entry.room_id
-                    and _room_fits(room, requirements.get(lesson.id), students)
-                    and room_allowed(room, teacher)
-                    and room_has_required_profiles(room.id, lesson.id, room_profiles, lesson_profiles)
                     and not _has_schedule_conflict(room, entry, entries, lessons, participants)]
 
         while True:
@@ -462,21 +470,13 @@ def _optimize_occupied_room_swaps(
                     if not (
                         time_allowed(first.start_time, first_teacher)
                         and time_allowed(second.start_time, second_teacher)
-                        and _room_fits(
-                            second_room, first_req,
-                            get_lesson_students_count(participants[first.lesson_id]),
+                        and second_room in _suitable_rooms(
+                            db, first_lesson, list(rooms.values()), first_req, participants,
+                            first_teacher, room_profiles, lesson_profiles,
                         )
-                        and _room_fits(
-                            first_room, second_req,
-                            get_lesson_students_count(participants[second.lesson_id]),
-                        )
-                        and room_allowed(second_room, first_teacher)
-                        and room_allowed(first_room, second_teacher)
-                        and room_has_required_profiles(
-                            second_room.id, first.lesson_id, room_profiles, lesson_profiles
-                        )
-                        and room_has_required_profiles(
-                            first_room.id, second.lesson_id, room_profiles, lesson_profiles
+                        and first_room in _suitable_rooms(
+                            db, second_lesson, list(rooms.values()), second_req, participants,
+                            second_teacher, room_profiles, lesson_profiles,
                         )
                     ):
                         continue
@@ -605,23 +605,10 @@ def _optimize_entries(
             continue
 
         requirement = requirements.get(entry.lesson_id)
-        students_count = get_lesson_students_count(
-            participants[entry.lesson_id]
-        )
-
-        candidates = [
-            room
-            for room in rooms_list
-            if room.id != entry.room_id
-            and _room_fits(room, requirement, students_count)
-            and room_allowed(room, teachers.get(lesson.teacher_id))
-            and room_has_required_profiles(
-                room.id,
-                entry.lesson_id,
-                room_profiles,
-                lesson_profiles,
-            )
-        ]
+        candidates = [room for room in _suitable_rooms(
+            db, lesson, rooms_list, requirement, participants,
+            teachers.get(lesson.teacher_id), room_profiles, lesson_profiles,
+        ) if room.id != entry.room_id]
 
         candidates.sort(key=lambda room: (preferred_room_cost(room.id, teachers.get(lesson.teacher_id), lesson), entrance_cost(room.id, teachers.get(lesson.teacher_id), distances), room.id))
         for candidate in candidates:
@@ -730,7 +717,7 @@ def _preview_optimization(
 
     originals = {item.id: (item.room_id, item.start_time, item.end_time) for item in entries}
 
-    rooms_list = db.query(Room).order_by(Room.id).all()
+    rooms_list = calculation_rows(db, Room)
     rooms = {room.id: room for room in rooms_list}
 
     lessons = {
@@ -958,7 +945,7 @@ def _preview_optimization(
         lessons=lessons,
         rooms=rooms,
         participants=participants,
-        teachers={teacher.id: teacher for teacher in db.query(Teacher).all()},
+        teachers={teacher.id: teacher for teacher in calculation_rows(db, Teacher)},
         subjects=subjects,
         requirements=requirements,
         week_type=week_type,
@@ -1008,21 +995,22 @@ def preview_optimization(
         if teacher_id <= 0 or db.get(Teacher, teacher_id) is None:
             raise ValueError("Преподаватель не найден")
 
-    rooms = {room.id: room for room in db.query(Room).all()}
-    checker = build_transition_checker(db, rooms)
+    with calculation_cache(db):
+        rooms = {room.id: room for room in calculation_rows(db, Room)}
+        checker = build_transition_checker(db, rooms)
 
-    key = "_optimization_transition_checker"
-    previous_checker = db.info.get(key)
-    db.info[key] = checker
+        key = "_optimization_transition_checker"
+        previous_checker = db.info.get(key)
+        db.info[key] = checker
 
-    try:
-        return _preview_optimization(
-            db,
-            week_type=week_type,
-            teacher_id=teacher_id,
-        )
-    finally:
-        if previous_checker is None:
-            db.info.pop(key, None)
-        else:
-            db.info[key] = previous_checker
+        try:
+            return _preview_optimization(
+                db,
+                week_type=week_type,
+                teacher_id=teacher_id,
+            )
+        finally:
+            if previous_checker is None:
+                db.info.pop(key, None)
+            else:
+                db.info[key] = previous_checker

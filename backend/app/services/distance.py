@@ -1,3 +1,4 @@
+from app.services.calculation_cache import calculation_rows
 import heapq
 
 from sqlalchemy.orm import Session
@@ -80,7 +81,7 @@ def get_node_travel_time(
     if from_node == to_node:
         return 0
 
-    connections = db.query(RoomConnection).all()
+    connections = calculation_rows(db, RoomConnection)
 
     graph = {}
 
