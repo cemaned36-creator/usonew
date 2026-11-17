@@ -1,3 +1,4 @@
+from app.services.schedule_index import ScheduleIndex
 from app.services.calculation_cache import calculation_cache, calculation_value, calculation_rows
 from dataclasses import dataclass
 from datetime import time
@@ -105,7 +106,8 @@ def _has_schedule_conflict(
     if lesson is None or not members:
         return True
 
-    for other in entries:
+    day_entries = entries.for_day(entry.weekday) if isinstance(entries, ScheduleIndex) else entries
+    for other in day_entries:
         if other.id == entry.id or other.weekday != entry.weekday:
             continue
 
@@ -226,13 +228,15 @@ def _check_teacher_transitions(
     if lesson is None:
         return False
 
-    teacher_entries = [
-        item
-        for item in entries
-        if item.weekday == changed_entry.weekday
-        and lessons.get(item.lesson_id) is not None
-        and lessons[item.lesson_id].teacher_id == lesson.teacher_id
-    ]
+    if isinstance(entries, ScheduleIndex):
+        teacher_entries = list(entries.for_teacher_day(lesson.teacher_id, changed_entry.weekday))
+    else:
+        teacher_entries = [
+            item for item in entries
+            if item.weekday == changed_entry.weekday
+            and lessons.get(item.lesson_id) is not None
+            and lessons[item.lesson_id].teacher_id == lesson.teacher_id
+        ]
 
     teacher_entries.sort(key=lambda item: _minutes(item.start_time))
 
@@ -268,7 +272,8 @@ def _sports_position_valid(entries, lessons, requirements, participants):
         if requirement is None or requirement.room_type != "gym":
             continue
         for member in participants[sport.lesson_id]:
-            others = [entry for entry in entries if entry.id != sport.id
+            day_entries = entries.for_day(sport.weekday) if isinstance(entries, ScheduleIndex) else entries
+            others = [entry for entry in day_entries if entry.id != sport.id
                       and entry.weekday == sport.weekday
                       and any(x["group_id"] == member["group_id"] for x in participants[entry.lesson_id])]
             if any(x.end_time <= sport.start_time for x in others) and any(x.start_time >= sport.end_time for x in others):
@@ -729,7 +734,7 @@ def _preview_optimization(
         for item in db.query(LessonRequirement).all()
     }
 
-    all_entries = entries
+    all_entries = ScheduleIndex(entries, lessons)
 
     participants = load_lesson_participants(
         db,
