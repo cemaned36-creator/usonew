@@ -1,3 +1,4 @@
+from app.services.transition_totals import TransitionTotals
 from app.services.schedule_index import ScheduleIndex
 from app.services.calculation_cache import calculation_cache, calculation_value, calculation_rows
 from dataclasses import dataclass
@@ -444,6 +445,11 @@ def _optimize_occupied_room_swaps(
             key = (entry.weekday, entry.start_time, entry.end_time)
             by_slot.setdefault(key, []).append(entry)
 
+    transition_totals = TransitionTotals(
+        [entry for day in by_teacher_day.values() for entry in day], lessons,
+        lambda previous, current: _transition_minutes(db, previous, current, lessons, rooms),
+    )
+
     swaps = []
     # A strict improvement is required on every exchange, so reversals cannot
     # cycle; cap the number of accepted moves for predictable preview time.
@@ -486,15 +492,13 @@ def _optimize_occupied_room_swaps(
                     ):
                         continue
 
-                    affected = (
-                        by_teacher_day[(first_lesson.teacher_id, first.weekday)]
-                        + by_teacher_day[(second_lesson.teacher_id, second.weekday)]
+                    affected_days = (
+                        (first_lesson.teacher_id, first.weekday),
+                        (second_lesson.teacher_id, second.weekday),
                     )
 
-                    def score():
-                        transitions = _teacher_transition_total(
-                            affected, lessons, rooms, db
-                        )
+                    def score(updates=None):
+                        transitions = transition_totals.total(updates, days=affected_days)
                         if transitions is None:
                             return None
                         return (
@@ -527,7 +531,8 @@ def _optimize_occupied_room_swaps(
                             db, entries, second, lessons, rooms
                         )
                     )
-                    after = score() if valid else None
+                    transition_updates = transition_totals.trial([first.id, second.id]) if valid else {}
+                    after = score(transition_updates) if valid else None
                     # A preference gain must never make teachers travel longer.
                     # The exchange must improve at least one objective without
                     # worsening preferences, entrance costs, or transitions.
@@ -538,6 +543,7 @@ def _optimize_occupied_room_swaps(
                         and after[2] <= before[2]
                         and after != before
                     ):
+                        transition_totals.accept(transition_updates)
                         swaps.append({
                             "first_entry_id": first.id,
                             "second_entry_id": second.id,
@@ -585,9 +591,11 @@ def _optimize_entries(
         )
     ]
 
-    current_total = _teacher_transition_total(
-        active_entries, lessons, rooms, db
+    transition_totals = TransitionTotals(
+        active_entries, lessons,
+        lambda previous, current: _transition_minutes(db, previous, current, lessons, rooms),
     )
+    current_total = transition_totals.total()
 
     if current_total is None:
         return
@@ -632,14 +640,14 @@ def _optimize_entries(
                 entry.room_id = old_room_id
                 continue
 
-            new_total = _teacher_transition_total(
-                active_entries, lessons, rooms, db
-            )
+            transition_updates = transition_totals.trial([entry.id])
+            new_total = transition_totals.total(transition_updates)
 
             new_preference = preference_total()
             if new_total is not None and (new_preference, new_total) < (current_preference, current_total):
                 current_preference = new_preference
                 current_total = new_total
+                transition_totals.accept(transition_updates)
                 break
 
             entry.room_id = old_room_id
