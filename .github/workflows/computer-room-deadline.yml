@@ -1,0 +1,13 @@
+name: Process computer room requests after deadline
+on:
+  schedule:
+    - cron: '3-58/5 * * * *'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  due:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check collection deadline
+        run: curl --fail-with-body --silent --show-error --retry 2 --max-time 60 -X POST https://usonew.onrender.com/room-requests/due

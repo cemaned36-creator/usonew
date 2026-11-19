@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import Link from "next/link";
+import ComputerRoomRequests from "@/components/ComputerRoomRequests";
 import BrandLogo from "@/components/BrandLogo";
 
 import {
@@ -64,6 +65,7 @@ export default function Home() {
   const [todayError, setTodayError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<{ id: number; name: string }[]>([]);
   const [teacherSearch, setTeacherSearch] = useState("");
+  const [requestVersion, setRequestVersion] = useState(0);
   const [selectedProfile, setSelectedProfile] = useState<{ role: "admin" | "teacher"; teacherId?: number; name: string } | null>(null);
   const [showProfilePicker, setShowProfilePicker] = useState(false);
 
@@ -168,7 +170,7 @@ export default function Home() {
 
     loadTodaySchedule();
     return () => controller.abort();
-  }, [selectedProfile?.role, selectedProfile?.teacherId]);
+  }, [selectedProfile?.role, selectedProfile?.teacherId, requestVersion]);
 
   /* =========================
      LOADING
@@ -396,6 +398,7 @@ export default function Home() {
                 SCHEDULE
             ================================================= */}
 
+            {selectedProfile && <ComputerRoomRequests key={selectedProfile.teacherId ?? "admin"} api={API} teacher={selectedProfile.teacherId} onProcessed={() => setRequestVersion(v => v + 1)} />}
             <section className="mt-1 flex w-full flex-1 flex-col">
               <Link
                 href={selectedProfile?.role === "teacher" ? `/weekly-schedule?teacherId=${selectedProfile.teacherId}` : "/weekly-schedule"}

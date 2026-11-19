@@ -70,6 +70,8 @@ type Lesson = {
 
 type MessageType = "success" | "error" | "info";
 
+function calendarKey(d: Date) { return [d.getFullYear(), String(d.getMonth()+1).padStart(2,"0"), String(d.getDate()).padStart(2,"0")].join("-"); }
+
 function startOfWeek(date: Date) {
   const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   result.setDate(result.getDate() - ((result.getDay() + 6) % 7));
@@ -205,7 +207,7 @@ export default function WeeklySchedulePage() {
     setLoading(true);
 
     try {
-      await loadSchedule(nextType);
+      await loadSchedule(nextType, nextStart);
     } catch (error) {
       showMessage(
         error instanceof Error
@@ -268,8 +270,8 @@ export default function WeeklySchedulePage() {
     }
   }
 
-  async function loadSchedule(weekType: "odd" | "even" = selectedWeekType) {
-    const response = await fetch(`${API}/weekly-schedule/?week_type=${weekType}`);
+  async function loadSchedule(weekType: "odd" | "even" = selectedWeekType, start = weekStart) {
+    const response = await fetch(`${API}/weekly-schedule/?week_type=${weekType}&week_start=${calendarKey(start)}`);
 
     if (!response.ok) {
       throw new Error("Не удалось загрузить расписание");
@@ -303,7 +305,7 @@ export default function WeeklySchedulePage() {
     async function loadData() {
       try {
         const endpoints = [
-          `/weekly-schedule/?week_type=${getWeekType(new Date())}`,
+          `/weekly-schedule/?week_type=${getWeekType(new Date())}&week_start=${calendarKey(startOfWeek(new Date()))}`,
           "/lessons/",
           "/rooms/",
           "/teachers/",

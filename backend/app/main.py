@@ -50,6 +50,8 @@ app.add_middleware(
 app.include_router(
     recommendation_router
 )
+from app.routers.room_requests import router as room_requests_router
+app.include_router(room_requests_router)
 app.include_router(dashboard_router)
 app.include_router(schedule_router)
 app.include_router(weekly_schedule_router)

@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+from app.models.room_request import overrides
 from sqlalchemy.orm import Session
 
 from app.models.lesson import Lesson
@@ -64,7 +65,10 @@ def get_daily_schedule(
         .all()
     } if lesson_ids else {}
 
-    room_ids = {entry.room_id for entry in entries}
+    assigned = overrides(db, target_date, target_date)
+    def room_id(e):
+        return assigned.get((target_date, e.id, e.lesson_id), e.room_id)
+    room_ids = {room_id(entry) for entry in entries}
     rooms = {
         room.id: room
         for room in db.query(Room).filter(Room.id.in_(room_ids)).all()
@@ -91,7 +95,7 @@ def get_daily_schedule(
 
     for entry in entries:
         lesson = lessons.get(entry.lesson_id)
-        room = rooms.get(entry.room_id)
+        room = rooms.get(room_id(entry))
 
         if lesson is None or room is None:
             raise ValueError(
@@ -161,7 +165,10 @@ def get_dashboard_data(db: Session, target_date: date):
 
     validation_error = None
     try:
-        validate_weekly_entries(db, entries)
+        from types import SimpleNamespace
+        assigned = overrides(db, target_date, target_date)
+        effective = [SimpleNamespace(**{**vars(e), "room_id": assigned.get((target_date, e.id, e.lesson_id), e.room_id)}) for e in entries]
+        validate_weekly_entries(db, effective)
     except ValueError as exc:
         validation_error = str(exc)
 

@@ -22,7 +22,8 @@ from app.models.student_group import StudentGroup
 
 from app.services.lesson_times import get_lesson_pair
 
-from datetime import time, datetime
+from app.models.room_request import overrides
+from datetime import time, datetime, date, timedelta
 
 from app.services.lesson_participants import (
     load_lesson_participants,
@@ -662,6 +663,7 @@ def check_transition(
 def get_weekly_schedule(
     week_type: str = Query("odd", pattern="^(odd|even)$"),
     db: Session = Depends(get_db),
+    week_start: date | None = None,
 ):
     entries = (
         db.query(WeeklyScheduleEntry)
@@ -675,7 +677,12 @@ def get_weekly_schedule(
     )
 
     lesson_ids = {entry.lesson_id for entry in entries}
-    room_ids = {entry.room_id for entry in entries}
+    if week_start and week_start.weekday() != 0:
+        raise HTTPException(422, "Начало недели должно быть понедельником")
+    assigned = overrides(db, week_start, week_start + timedelta(days=6)) if week_start else {}
+    def room_id(e):
+        return assigned.get((week_start + timedelta(days=e.weekday), e.id, e.lesson_id), e.room_id) if assigned else e.room_id
+    room_ids = {room_id(entry) for entry in entries}
 
     lessons = {
         lesson.id: lesson
@@ -716,7 +723,7 @@ def get_weekly_schedule(
 
     for entry in entries:
         lesson = lessons.get(entry.lesson_id)
-        room = rooms.get(entry.room_id)
+        room = rooms.get(room_id(entry))
 
         if lesson is None or room is None:
             raise HTTPException(
@@ -733,7 +740,7 @@ def get_weekly_schedule(
             "weekday": entry.weekday,
             "start_time": entry.start_time.strftime("%H:%M"),
             "end_time": entry.end_time.strftime("%H:%M"),
-            "room_id": entry.room_id,
+            "room_id": room_id(entry),
             "room_name": room.name,
             "teacher_id": lesson.teacher_id,
             "subject_id": lesson.subject_id,
