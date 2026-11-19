@@ -42,3 +42,21 @@ class RequestTest(unittest.TestCase):
         r.hide(self.db)
         self.assertFalse(r.queue(None,self.db)['rows'])
         self.assertTrue(r.pdf(result['report_id'],self.db).body.startswith(b'%PDF'))
+        report_id = result['report_id']
+        # Any conflict blocks the entire reversal before changing any request.
+        second = self.db.get(WeeklyScheduleEntry,3)
+        second.room_id=3
+        self.db.commit()
+        with self.assertRaises(HTTPException):r.undo(report_id,self.db)
+        self.assertEqual(get_daily_schedule(self.db,day,1)['schedule'][0]['room'],'1')
+        second.room_id=2
+        self.db.commit()
+        self.assertEqual(r.undo(report_id,self.db)['returned'],2)
+        self.assertEqual(get_daily_schedule(self.db,day,1)['schedule'][0]['room'],'3')
+        self.assertEqual([x['status'] for x in r.queue(None,self.db)['rows']],['pending','pending'])
+        self.assertTrue(r.reports(self.db)[0]['undone_at'])
+        self.assertEqual(r.reports(self.db)[0]['rows'][0]['status'],'assigned')
+        self.assertEqual(r.due(self.db)['processed'],0)
+        self.assertEqual(r.manual(self.db)['processed'],2)
+        with self.assertRaises(HTTPException):r.undo(report_id,self.db)
+        self.assertEqual(get_daily_schedule(self.db,day,1)['schedule'][0]['room'],'1')

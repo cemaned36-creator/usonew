@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 type Row = { id:number; entry_id?:number; time:string; subject:string; group:string; teacher:string; room:string; day:string; status:string; reason?:string; new_room?:string };
 type Queue = {rows:Row[]; deadline:string|null; closed:boolean};
-type Report = {id:number;date:string;mode:string;rows:Row[]};
+type Report = {id:number;date:string;mode:string;can_undo:boolean;undone_at:string|null;rows:Row[]};
 const field="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
 const button="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50";
 function localDay() { return new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Yekaterinburg"}).format(new Date()); }
@@ -24,10 +24,12 @@ export default function ComputerRoomRequests({api,teacher,onProcessed}:{api:stri
  useEffect(()=>{let live=true;setOptions([]);setEntry("");
  if(teacher && day)read<Row[]>(base+"/options?teacher_id="+teacher+"&day="+day).then(r=>{if(live)setOptions(r);}).catch(e=>{if(live)setMsg(e.message);});return()=>{live=false};},[teacher,base,day,version]);
  async function action(path:string, method:string, body?:object){setBusy(true);setMsg("");
- try{const r=await read<{processed?:number}>(base+path,{method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
- setMsg(path==="/process"?"Обработано заявок: "+r.processed:path==="/hide"?"Обработанные заявки скрыты. Отчёты сохранены.":path==="/settings"?"Срок сбора сохранён.":"Заявка отправлена.");
- setVersion(v=>v+1);if(path==="/process")onProcessed();if(path==="/settings")setSettings(false);
+ try{const r=await read<{processed?:number;returned?:number}>(base+path,{method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+ setMsg(path.endsWith("/undo")?"Обработка отменена. Возвращено в очередь: "+r.returned:path==="/process"?"Обработано заявок: "+r.processed:path==="/hide"?"Обработанные заявки скрыты. Отчёты сохранены.":path==="/settings"?"Срок сбора сохранён.":"Заявка отправлена.");
+ setVersion(v=>v+1);if(path==="/process"||path.endsWith("/undo"))onProcessed();if(path==="/settings")setSettings(false);
  }catch(e){setMsg((e as Error).message);}finally{setBusy(false);}}
+ const reversible=reports.find(r=>r.can_undo);
+ function undoBatch(id:number){if(window.confirm("Отменить обработку №"+id+"? Разовые назначения будут сняты, а заявки вернутся в очередь."))void action("/reports/"+id+"/undo","POST");}
  const available=options.filter(o=>!queue?.rows.some(r=>r.day===day && r.entry_id===o.id));
  return <section className="my-4 w-full rounded-2xl border border-slate-200 bg-white p-5 text-slate-900">
  <h2 className="text-lg font-semibold">Заявки на компьютерную аудиторию</h2>
@@ -37,6 +39,7 @@ export default function ComputerRoomRequests({api,teacher,onProcessed}:{api:stri
  <label className="min-w-0 flex-1">Занятие<br/><select className={field+" w-full"} value={entry} onChange={e=>setEntry(e.target.value)}><option value="">{available.length?"Выберите пару":"Нет доступных занятий"}</option>{available.map(o=><option key={o.id} value={o.id}>{o.time} · {o.subject} · {o.group}</option>)}</select></label>
  <button className={button} disabled={busy||!entry||!queue||queue.closed} onClick={()=>action("","POST",{day,entry_id:Number(entry),teacher_id:teacher})}>Отправить заявку</button></div>:
  <div className="flex flex-wrap gap-2"><button className={button} disabled={busy||!queue?.rows.some(r=>r.status==="pending")} onClick={()=>action("/process","POST")}>Обработать все заявки</button>
+ {reversible && <button className={field} disabled={busy} onClick={()=>undoBatch(reversible.id)}>Отменить обработку №{reversible.id}</button>}
  <button className={field} disabled={busy||!queue?.rows.some(r=>r.status!=="pending")} onClick={()=>action("/hide","POST")}>Очистить обработанные</button>
  <button className={field} aria-expanded={settings} onClick={()=>setSettings(!settings)}>Настройки сбора</button></div>}
  {settings && <form className="my-3 flex flex-wrap items-end gap-2 rounded-xl bg-slate-50 p-3" onSubmit={e=>{e.preventDefault();action("/settings","PUT",{deadline:new Date(deadline+":00+05:00").toISOString()});}}>
@@ -44,6 +47,8 @@ export default function ComputerRoomRequests({api,teacher,onProcessed}:{api:stri
  <p role="status" className="my-2 text-sm">{msg}</p>
  <ul className="max-h-64 divide-y overflow-auto">{queue?.rows.map(r=><li key={r.id} className="py-2 text-sm"><strong>{r.day} · {r.time} · {r.subject}</strong><br/>{r.teacher} · {r.group} · {r.status==="pending"?"Ожидает обработки":r.status==="assigned"?"Назначена: "+r.new_room:r.reason}</li>)}</ul>
  {queue && !queue.rows.length && <p className="text-sm text-slate-500">Заявок пока нет.</p>}
- {!teacher && <details className="mt-4"><summary className="cursor-pointer font-medium">Архив отчётов ({reports.length})</summary>{reports.map(r=><p key={r.id} className="mt-2 text-sm">{r.date} · {r.mode==="auto"?"По сроку":"Вручную"} · назначено {r.rows.filter(x=>x.status==="assigned").length} из {r.rows.length} · <a className="underline" href={base+"/reports/"+r.id+"/pdf"}>Скачать PDF</a></p>)}</details>}
+ {!teacher && <details className="mt-4"><summary className="cursor-pointer font-medium">Архив отчётов ({reports.length})</summary>{reports.map(r=><p key={r.id} className="mt-2 text-sm">{r.date} · {r.mode==="auto"?"По сроку":"Вручную"} · назначено {r.rows.filter(x=>x.status==="assigned").length} из {r.rows.length} · <a className="underline" href={base+"/reports/"+r.id+"/pdf"}>Скачать PDF</a>
+ {r.undone_at && <span> · Отменено {r.undone_at}</span>}
+ {r.can_undo && <button type="button" disabled={busy} className={field+" ml-2"} onClick={()=>undoBatch(r.id)}>Отменить обработку</button>}</p>)}</details>}
  </section>;
 }

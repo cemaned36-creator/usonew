@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Lesson, LessonRequirement, Room, Teacher, WeeklyScheduleEntry
-from app.models.room_request import AllocationReport, Collection, ComputerRequest, overrides
+from app.models.room_request import AllocationReport, AllocationUndo, Collection, ComputerRequest, overrides
 from app.services.dashboard import get_academic_week, get_daily_schedule
 from app.services.equipment import load_equipment_profiles, room_has_required_profiles
 from app.services.weekly_generator import build_transition_checker
@@ -189,9 +189,71 @@ def due(db: Session = Depends(get_db)):
     return process(db,True)
 
 
+def latest_active(db):
+    return (db.query(AllocationReport.id)
+            .filter(~AllocationReport.id.in_(db.query(AllocationUndo.report_id)))
+            .order_by(AllocationReport.id.desc()).limit(1).scalar())
+
+
+@router.post("/reports/{report_id}/undo")
+def undo(report_id: int, db: Session = Depends(get_db)):
+    lock(db)
+    report = db.get(AllocationReport, report_id)
+    if not report:
+        raise HTTPException(404, "Отчёт не найден")
+    if db.get(AllocationUndo, report_id):
+        raise HTTPException(409, "Эта обработка уже отменена")
+    if latest_active(db) != report_id:
+        raise HTTPException(409, "Сначала отмените более позднюю обработку")
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(text("LOCK TABLE weekly_schedule_entries IN SHARE MODE"))
+    now = datetime.now(ZONE)
+    requests = []
+    restoring = {}
+    for snap in report.rows:
+        req = db.get(ComputerRequest, snap["id"])
+        if not req or req.status != snap["status"] or req.assigned_room != snap["assigned_room"]:
+            raise HTTPException(409, "Состояние заявки изменилось; откат не выполнен")
+        requests.append(req)
+        if req.status != "assigned":
+            continue
+        entry = db.get(WeeklyScheduleEntry, req.entry_id)
+        if (not entry or entry.lesson_id != req.lesson_id or entry.weekday != req.day.weekday()
+                or entry.week_type != get_academic_week(req.day)["week_type"]
+                or entry.start_time.strftime("%H:%M") != snap["time"]
+                or entry.end_time.strftime("%H:%M") != snap["end"]
+                or db.get(Room, entry.room_id).name != snap["room"]):
+            raise HTTPException(409, "Исходное расписание изменилось; откат не выполнен")
+        if datetime.combine(req.day, entry.start_time, ZONE) <= now:
+            raise HTTPException(409, "Одно из назначенных занятий уже началось; откат не выполнен")
+        restoring.setdefault(req.day, set()).add(entry.id)
+
+    for day, returning in restoring.items():
+        entries = db.query(WeeklyScheduleEntry).filter_by(weekday=day.weekday(), week_type=get_academic_week(day)["week_type"]).all()
+        remaining = overrides(db, day, day)
+        for first in entries:
+            if first.id not in returning:
+                continue
+            for other in entries:
+                room = other.room_id if other.id in returning else remaining.get((day, other.id, other.lesson_id), other.room_id)
+                if (other.id != first.id and room == first.room_id and other.start_time < first.end_time
+                        and first.start_time < other.end_time):
+                    raise HTTPException(409, "Исходная аудитория уже занята; откат не выполнен")
+
+    for req in requests:
+        req.status, req.reason, req.assigned_room, req.hidden = "pending", None, None, False
+        req.snapshot = {k:v for k,v in req.snapshot.items() if k != "new_room"}
+    db.add(AllocationUndo(report_id=report_id, created=now))
+    db.commit()
+    return {"returned": len(requests)}
+
+
 @router.get("/reports")
 def reports(db: Session = Depends(get_db)):
-    return [{"id":r.id,"date":date_label(r.created),"mode":r.mode,"rows":r.rows}
+    undone = {u.report_id:date_label(u.created) for u in db.query(AllocationUndo)}
+    latest = latest_active(db)
+    return [{"id":r.id,"date":date_label(r.created),"mode":r.mode,"rows":r.rows,
+             "undone_at":undone.get(r.id),"can_undo":r.id == latest}
             for r in db.query(AllocationReport).order_by(AllocationReport.id.desc()).all()]
 
 
@@ -203,6 +265,9 @@ def pdf(report_id:int, db: Session = Depends(get_db)):
     style = ParagraphStyle("report",fontName="USO",leading=15)
     lines = [f"Компьютерные аудитории · отчёт №{r.id}",date_label(r.created),
              "По сроку" if r.mode=="auto" else "Вручную"]
+    reversal = db.get(AllocationUndo, report_id)
+    if reversal:
+        lines.append("Обработка отменена: " + date_label(reversal.created) + ". Ниже — исходный результат.")
     for x in r.rows:
         lines.extend([f'{x["day"]} · {x["time"]}–{x["end"]} · {x["subject"]}',
                       f'{x["teacher"]} · {x["group"]} · {x["room"]}',

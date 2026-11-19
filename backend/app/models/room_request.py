@@ -1,4 +1,4 @@
-from datetime import timedelta
+from sqlalchemy import ForeignKey
 from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, JSON, UniqueConstraint
 from app.database import Base
 
@@ -31,6 +31,12 @@ class AllocationReport(Base):
     created = Column(DateTime(timezone=True), nullable=False)
     mode = Column(String, nullable=False)
     rows = Column(JSON, nullable=False)
+
+
+class AllocationUndo(Base):
+    __tablename__ = "computer_request_undos"
+    report_id = Column(Integer, ForeignKey("computer_request_reports.id"), primary_key=True)
+    created = Column(DateTime(timezone=True), nullable=False)
 
 
 def overrides(db, start, end):
