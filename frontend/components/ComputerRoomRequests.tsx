@@ -24,10 +24,16 @@ export default function ComputerRoomRequests({api,teacher,onProcessed}:{api:stri
  useEffect(()=>{let live=true;setOptions([]);setEntry("");
  if(teacher && day)read<Row[]>(base+"/options?teacher_id="+teacher+"&day="+day).then(r=>{if(live)setOptions(r);}).catch(e=>{if(live)setMsg(e.message);});return()=>{live=false};},[teacher,base,day,version]);
  async function action(path:string, method:string, body?:object){setBusy(true);setMsg("");
- try{const r=await read<{processed?:number;returned?:number}>(base+path,{method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
- setMsg(path.endsWith("/undo")?"Обработка отменена. Возвращено в очередь: "+r.returned:path==="/process"?"Обработано заявок: "+r.processed:path==="/hide"?"Обработанные заявки скрыты. Отчёты сохранены.":path==="/settings"?"Срок сбора сохранён.":"Заявка отправлена.");
+ try{const r=await read<{processed?:number;returned?:number;deleted?:number}>(base+path,{method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+ setMsg(path==="/clear-pending"?"Удалено из очереди: "+r.deleted:path.endsWith("/undo")?"Обработка отменена. Возвращено в очередь: "+r.returned:path==="/process"?"Обработано заявок: "+r.processed:path==="/hide"?"Обработанные заявки скрыты. Отчёты сохранены.":path==="/settings"?"Срок сбора сохранён.":"Заявка отправлена.");
  setVersion(v=>v+1);if(path==="/process"||path.endsWith("/undo"))onProcessed();if(path==="/settings")setSettings(false);
- }catch(e){setMsg((e as Error).message);}finally{setBusy(false);}}
+ }catch(e){setMsg((e as Error).message);if(path==="/clear-pending")setVersion(v=>v+1);}finally{setBusy(false);}}
+ const pendingIds=queue?.rows.filter(row=>row.status==="pending").map(row=>row.id)??[];
+ function clearPending(){
+   if(pendingIds.length && window.confirm("Удалить все ожидающие заявки ("+pendingIds.length+")? Отменить удаление нельзя. Назначения и отчёты сохранятся.")){
+     void action("/clear-pending","POST",{pending_ids:pendingIds});
+   }
+ }
  const reversible=reports.find(r=>r.can_undo);
  function undoBatch(id:number){if(window.confirm("Отменить обработку №"+id+"? Разовые назначения будут сняты, а заявки вернутся в очередь."))void action("/reports/"+id+"/undo","POST");}
  const available=options.filter(o=>!queue?.rows.some(r=>r.day===day && r.entry_id===o.id));
@@ -39,6 +45,7 @@ export default function ComputerRoomRequests({api,teacher,onProcessed}:{api:stri
  <label className="min-w-0 flex-1">Занятие<br/><select className={field+" w-full"} value={entry} onChange={e=>setEntry(e.target.value)}><option value="">{available.length?"Выберите пару":"Нет доступных занятий"}</option>{available.map(o=><option key={o.id} value={o.id}>{o.time} · {o.subject} · {o.group}</option>)}</select></label>
  <button className={button} disabled={busy||!entry||!queue||queue.closed} onClick={()=>action("","POST",{day,entry_id:Number(entry),teacher_id:teacher})}>Отправить заявку</button></div>:
  <div className="flex flex-wrap gap-2"><button className={button} disabled={busy||!queue?.rows.some(r=>r.status==="pending")} onClick={()=>action("/process","POST")}>Обработать все заявки</button>
+ <button type="button" className={field+" text-red-700"} disabled={busy||!pendingIds.length} onClick={clearPending}>Удалить все заявки из очереди ({pendingIds.length})</button>
  {reversible && <button className={field} disabled={busy} onClick={()=>undoBatch(reversible.id)}>Отменить обработку №{reversible.id}</button>}
  <button className={field} disabled={busy||!queue?.rows.some(r=>r.status!=="pending")} onClick={()=>action("/hide","POST")}>Очистить обработанные</button>
  <button className={field} aria-expanded={settings} onClick={()=>setSettings(!settings)}>Настройки сбора</button></div>}

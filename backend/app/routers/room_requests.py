@@ -98,6 +98,22 @@ def configure(payload: Deadline, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+class ClearQueue(BaseModel):
+    pending_ids: list[int]
+
+
+@router.post("/clear-pending")
+def clear_pending(payload: ClearQueue, db: Session = Depends(get_db)):
+    lock(db)
+    pending = db.query(ComputerRequest).filter_by(status="pending")
+    current = {row.id for row in pending.with_entities(ComputerRequest.id)}
+    if current != set(payload.pending_ids):
+        raise HTTPException(409, "Очередь изменилась. Проверьте обновлённый список и подтвердите удаление ещё раз.")
+    deleted = pending.delete(synchronize_session=False)
+    db.commit()
+    return {"deleted": deleted}
+
+
 @router.post("/hide")
 def hide(db: Session = Depends(get_db)):
     lock(db)

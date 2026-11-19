@@ -60,3 +60,23 @@ class RequestTest(unittest.TestCase):
         self.assertEqual(r.manual(self.db)['processed'],2)
         with self.assertRaises(HTTPException):r.undo(report_id,self.db)
         self.assertEqual(get_daily_schedule(self.db,day,1)['schedule'][0]['room'],'1')
+
+    def test_clear_only_confirmed_pending_and_allow_resubmission(self):
+        day = datetime.now(r.ZONE).date() + timedelta(days=7)
+        day += timedelta(days=(-day.weekday())%7)
+        entry = self.db.query(WeeklyScheduleEntry).filter_by(week_type=get_academic_week(day)['week_type']).one()
+        self.db.get(Room,1).has_computers=True
+        self.db.commit()
+        r.submit(r.Submission(teacher_id=1,entry_id=entry.id,day=day),self.db)
+        report=r.manual(self.db)['report_id']
+        r.configure(r.Deadline(deadline=datetime.now(timezone.utc)+timedelta(days=1)),self.db)
+        next_pair=r.Submission(teacher_id=1,entry_id=entry.id,day=day+timedelta(days=14))
+        r.submit(next_pair,self.db)
+        with self.assertRaises(HTTPException):
+            r.clear_pending(r.ClearQueue(pending_ids=[]),self.db)
+        pending=[x['id'] for x in r.queue(None,self.db)['rows'] if x['status']=='pending']
+        self.assertEqual(r.clear_pending(r.ClearQueue(pending_ids=pending),self.db),{'deleted':1})
+        self.assertEqual(r.queue(None,self.db)['rows'][0]['status'],'assigned')
+        self.assertEqual(r.reports(self.db)[0]['id'],report)
+        self.assertEqual(get_daily_schedule(self.db,day,1)['schedule'][0]['room'],'1')
+        r.submit(next_pair,self.db)
